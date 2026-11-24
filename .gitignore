@@ -1,0 +1,13 @@
+# build output
+/build/
+/dist/
+/Herbarium.apk
+/Herbarium.apk.idsig
+# third-party binaries (see libs/README for where they come from)
+/libs/dl/
+/libs/vosk/
+/libs/jna/
+/libs/model/
+# signing keys never go here (they live in ~/.config/herbarium)
+*.jks
+*.keystore

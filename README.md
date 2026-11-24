@@ -43,3 +43,7 @@ For the strongest lock, the keeper connects the phone to their computer once wit
 ## Updates
 
 Herbarium checks for a new version once a day and offers it in Herbarium's Settings. To check straight away, tap **Check for an update** there. Each update is checked against its fingerprint before it installs.
+
+## Building from source
+
+The source is in this repository: plain Java, no Gradle. You need the Android SDK (build-tools 36.1.0, platform android-36) and JDK 17 or newer. Fetch the offline speech libraries listed in `libs/README` into `libs/vosk` and `libs/jna`, then run `./build.sh`; it runs the checks in `tests/` and writes `Herbarium.apk`, signed with a key of your own. `vendor/` holds Android's MMS message code (Apache-2.0, see `vendor/README`); the Literata fonts in `assets/fonts` are under the SIL Open Font License.

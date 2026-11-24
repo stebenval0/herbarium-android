@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="guard_description">Herbarium keeps the apps Clausus blocks closed while Clausus is on, and keeps its own settings from being switched off then. It doesn\'t read or keep anything you type.</string>
+</resources>

@@ -1,0 +1,2 @@
+Android's MMS message format (PDU) reader/writer, Apache-2.0, from https://github.com/klinker41/android-smsmms at f6fa7d379444dc11d700fe6178b418bd76cfb88f (itself from AOSP frameworks/opt/mms). Only the pdu_alt package and its small dependencies; unmodified except where noted in this file.
+Changes: klinker logger -> android.util.Log; SendReq.prepareFromAddress no longer looks up the phone's own number (Android inserts it).

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The window starts already in Herbarium's colours, so there's never a white or black flash before the first frame. -->
+    <style name="Herbarium" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash</item>
+        <item name="android:statusBarColor">#00000000</item>
+        <item name="android:navigationBarColor">#0c1026</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:colorAccent">#b8913e</item>
+        <item name="android:textCursorDrawable">@null</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <!-- Herbarium has its own day and night; Android must never darken it on its own (force-dark, dark theme). -->
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+    <!-- calls: no starting screen at all (no icon flash), the window already dark like the call screen's night paper -->
+    <style name="Herbarium.Call" parent="Herbarium">
+        <item name="android:windowSplashScreenBackground">#161c38</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+</resources>

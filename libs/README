@@ -1,0 +1,5 @@
+Herbarium's own offline speech recogniser (voice typing on phones without Google's voice service).
+  vosk/  from com.alphacephei:vosk-android:0.3.47 (Apache-2.0), unpacked .aar
+  jna/   from net.java.dev.jna:jna:5.13.0 (Apache-2.0 / LGPL-2.1), unpacked .aar
+  dl/    the original .aar files from Maven Central (sha1 checked against Maven's .sha1 files)
+The English model (vosk-model-small-en-us-0.15, ~40 MB, Apache-2.0) is downloaded by the phone the first time it's needed.
