@@ -78,8 +78,8 @@ final class Summary {
     static Summary of(Context c) {
         Set<String> blocked = State.locked(c) ? State.packages(c) : new java.util.HashSet<>();
         List<Notes.Note> all = new ArrayList<>();
-        // (Caretaken Home already has a big card for each call to return)
-        if (!Care.on(c)) for (Missed.Call m : Missed.waiting(c, true)) {      // missed calls (Herbarium is the phone app, so they're not in Android's list)
+        // (Caretaken Home already has a big card for each call to return; another phone app posts its own missed-call notices)
+        if (!Care.on(c) && isDialer(c)) for (Missed.Call m : missed(c)) {      // missed calls (Herbarium is the phone app, so they're not in Android's list)
             Notes.Note n = new Notes.Note();
             n.key = Notes.MISSED + m.number; n.pkg = c.getPackageName(); n.app = "Phone"; n.title = m.name;
             n.text = m.times > 1 ? "called " + m.times + " times" : ""; n.person = ""; n.when = m.at;
@@ -88,6 +88,19 @@ final class Summary {
         }
         all.addAll(Notes.all(c));
         return build(all, blocked, who -> Calls.inContacts(c, who));
+    }
+
+    private static volatile List<Missed.Call> missedCache = new ArrayList<>();
+    private static volatile long missedAt;
+    /** The calls to return: read fresh off the main thread; on it, the last reading (refreshed in the background). */
+    private static List<Missed.Call> missed(Context c) {
+        if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) { missedCache = Missed.waiting(c, true); missedAt = android.os.SystemClock.elapsedRealtime(); return missedCache; }
+        if (android.os.SystemClock.elapsedRealtime() - missedAt > 2000) { Context app = c.getApplicationContext(); new Thread(() -> { missedCache = Missed.waiting(app, true); missedAt = android.os.SystemClock.elapsedRealtime(); }).start(); }
+        return missedCache;
+    }
+    private static boolean isDialer(Context c) {
+        android.app.role.RoleManager rm = c.getSystemService(android.app.role.RoleManager.class);
+        return rm != null && rm.isRoleHeld(android.app.role.RoleManager.ROLE_DIALER);
     }
 
     /** The summary itself, with no Android in it (so tests can run it). */

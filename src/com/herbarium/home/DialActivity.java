@@ -117,6 +117,14 @@ public class DialActivity extends Activity {
     private void call() {
         String n = number.toString();
         if (n.isEmpty()) { msg.setText("Type the number first."); msg.setVisibility(android.view.View.VISIBLE); return; }
+        // opened over the lock screen for an emergency: only emergency numbers, until the phone is opened
+        android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
+        android.telephony.TelephonyManager tel = getSystemService(android.telephony.TelephonyManager.class);
+        boolean emergency = false;
+        try { emergency = tel != null && tel.isEmergencyNumber(n); } catch (Exception ignored) {}
+        if (getIntent().getBooleanExtra("emergency", false) && km != null && km.isKeyguardLocked() && !emergency) {
+            msg.setVisibility(android.view.View.VISIBLE); msg.setText("Open the phone first to call this number."); return;
+        }
         try {
             getSystemService(TelecomManager.class).placeCall(Uri.fromParts("tel", n, null), new Bundle());
             finish();

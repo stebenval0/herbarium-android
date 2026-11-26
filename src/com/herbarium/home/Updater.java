@@ -50,16 +50,20 @@ final class Updater {
     }
 
     /** Once a day (from Guard, when the screen comes on): a quiet notice if a newer Herbarium is out. Never installs by itself. */
+    private static final int NOTICE = 7301;       // (7201 is the call notice)
     static void dailyCheck(Context c) {
         new Thread(() -> {
             JSONObject rel = available(c, false);
             android.app.NotificationManager nm = c.getSystemService(android.app.NotificationManager.class);
             if (nm == null) return;
-            if (rel == null) { nm.cancel(7201); return; }
+            if (rel == null) { nm.cancel(NOTICE); return; }
+            long code = rel.optLong("code");
+            if (Theme.prefs(c).getLong("updateNotified", 0) == code) return;      // once per version, not every time the screen comes on
+            Theme.prefs(c).edit().putLong("updateNotified", code).apply();
             if (nm.getNotificationChannel("updates") == null)
                 nm.createNotificationChannel(new android.app.NotificationChannel("updates", "Herbarium updates", android.app.NotificationManager.IMPORTANCE_LOW));
-            android.app.PendingIntent open = android.app.PendingIntent.getActivity(c, 7201, new android.content.Intent(c, AccessActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK), android.app.PendingIntent.FLAG_IMMUTABLE);
-            nm.notify(7201, new android.app.Notification.Builder(c, "updates").setSmallIcon(android.R.drawable.stat_sys_download_done)
+            android.app.PendingIntent open = android.app.PendingIntent.getActivity(c, NOTICE, new android.content.Intent(c, AccessActivity.class).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK), android.app.PendingIntent.FLAG_IMMUTABLE);
+            nm.notify(NOTICE, new android.app.Notification.Builder(c, "updates").setSmallIcon(android.R.drawable.stat_sys_download_done)
                     .setContentTitle("Herbarium " + rel.optString("version", "update") + " is ready")
                     .setContentText(Care.on(c) ? "For helpers: Settings → Check for an update" : "Settings → Check for an update")
                     .setContentIntent(open).setAutoCancel(true).build());

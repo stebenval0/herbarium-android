@@ -124,8 +124,8 @@ public class Guard extends AccessibilityService {
             // events can arrive out of order when windows change together, so after any change look at what is really on top
             // (only needed while the Recent page is up or the switcher has just opened: no looking at other windows otherwise)
             if (recents.showing() || SystemClock.elapsedRealtime() - switcherAt < 2000) { main.removeCallbacks(switcherCheck); main.postDelayed(switcherCheck, 120); }
-            if (Recents.isSwitcher(cls) && Care.on(this)) { performGlobalAction(GLOBAL_ACTION_HOME); return; }   // Caretaken: no app switcher, just Home
-            if (Recents.isSwitcher(cls)) {
+            if (Recents.isSwitcher(this, pkg, cls) && Care.on(this)) { performGlobalAction(GLOBAL_ACTION_HOME); return; }   // Caretaken: no app switcher, just Home
+            if (Recents.isSwitcher(this, pkg, cls)) {
                 switcherPkg = pkg; switcherAt = SystemClock.elapsedRealtime(); recents.switcherPkg = pkg;
                 if (recentsWanted()) recents.show();
                 main.removeCallbacks(settle); main.postDelayed(settle, 800);       // and settle it once the switcher has finished opening

@@ -99,7 +99,7 @@ public class Notes extends NotificationListenerService {
         Notes s = instance; if (s != null) try { s.cancelNotification(key); } catch (Exception ignored) {}
     }
     static synchronized void clearAll(Context c) {
-        if (!Care.on(c)) for (Missed.Call m : Missed.waiting(c, true)) Missed.aside(c, m.number);   // (Caretaken keeps calls to return until they're returned)
+        if (!Care.on(c)) { Context app = c.getApplicationContext(); new Thread(() -> { for (Missed.Call m : Missed.waiting(app, true)) Missed.aside(app, m.number); }).start(); }   // (Caretaken keeps calls to return until they're returned)
         List<Note> keep = new ArrayList<>(); save(c, keep); OPEN.clear();
         Notes s = instance; if (s != null) try { s.cancelAllNotifications(); } catch (Exception ignored) {}
     }

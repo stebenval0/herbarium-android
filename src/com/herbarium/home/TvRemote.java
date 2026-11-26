@@ -63,16 +63,25 @@ final class TvRemote {
         BluetoothAdapter a = adapter();
         if (a == null || !a.isEnabled()) { tell(); return; }
         if (hid != null) { if (!registered) register(); else reconnect(); return; }
+        if (asking) return;            // one request at a time (held keys call start() again and again)
+        asking = true; wanted = true;
         try {
             a.getProfileProxy(c, new BluetoothProfile.ServiceListener() {
-                @Override public void onServiceConnected(int profile, BluetoothProfile p) { hid = (BluetoothHidDevice) p; register(); }
+                @Override public void onServiceConnected(int profile, BluetoothProfile p) {
+                    asking = false;
+                    if (!wanted) { try { a.closeProfileProxy(BluetoothProfile.HID_DEVICE, p); } catch (Exception ignored) {} return; }   // the screen closed meanwhile
+                    hid = (BluetoothHidDevice) p; register();
+                }
                 @Override public void onServiceDisconnected(int profile) { hid = null; registered = false; tell(); }
             }, BluetoothProfile.HID_DEVICE);
-        } catch (SecurityException e) { tell(); }
+        } catch (SecurityException e) { asking = false; tell(); }
     }
+    private volatile boolean asking, wanted;
+    boolean asking() { return asking; }
 
     /** Stop being a remote (the screen closed): the television gets its own keyboard back. */
     void stop() {
+        wanted = false;
         try { if (hid != null && tv != null) hid.disconnect(tv); } catch (Exception ignored) {}
         try { if (hid != null && registered) hid.unregisterApp(); } catch (Exception ignored) {}
         registered = false; state = BluetoothProfile.STATE_DISCONNECTED;

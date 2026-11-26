@@ -60,6 +60,19 @@ final class Recents {
     /** Android's switcher, whoever draws it (Motorola, Pixel and Launcher3 all call it RecentsActivity). */
     static boolean isSwitcher(CharSequence cls) { return cls != null && cls.toString().endsWith("RecentsActivity"); }
 
+    private static String recentsPkg;
+    /** The package that draws Android's app switcher (the launcher's quickstep, or System UI). */
+    static boolean isSwitcher(android.content.Context c, String pkg, CharSequence cls) {
+        if (!isSwitcher(cls) || pkg == null) return false;
+        if (recentsPkg == null) {
+            String comp = "";
+            try { int id = android.content.res.Resources.getSystem().getIdentifier("config_recentsComponentName", "string", "android"); if (id != 0) comp = android.content.res.Resources.getSystem().getString(id); } catch (Exception ignored) {}
+            recentsPkg = comp.contains("/") ? comp.substring(0, comp.indexOf('/')) : "";
+        }
+        // (phone makers often override that setting, and the override isn't visible here: any launcher counts)
+        return pkg.equals(recentsPkg) || pkg.equals("com.android.systemui") || pkg.contains("launcher") || pkg.contains("quickstep");
+    }
+
     private volatile boolean fromHome;
     /** Herbarium's Home came to the front: Back from the Recent page should return there. */
     void sawHome() { fromHome = true; }

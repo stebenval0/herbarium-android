@@ -77,7 +77,7 @@ final class Apps {
             out.add(new App(c.getPackageName(), DialActivity.class.getName(), "Phone"));
             for (ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_DIAL), 0)) replaced.add(r.activityInfo.packageName);
         }
-        out.add(new App(c.getPackageName(), TvActivity.class.getName(), "Television"));   // Bluetooth: works when the Wi-Fi doesn't
+        if (android.os.Build.VERSION.SDK_INT >= 31) out.add(new App(c.getPackageName(), TvActivity.class.getName(), "Television"));   // (its Bluetooth permissions are Android 12+)   // Bluetooth: works when the Wi-Fi doesn't
         replaced.remove(c.getPackageName());
         replaced.remove("com.google.android.contacts"); replaced.remove("com.android.contacts");   // Contacts also dials; keep it
         for (ResolveInfo r : pm.queryIntentActivities(main, 0)) {

@@ -68,7 +68,8 @@ final class Calls {
         android.os.UserManager um = c.getSystemService(android.os.UserManager.class);
         if (um != null && !um.isUserUnlocked()) return false;
         try (Cursor cur = c.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, new String[]{ContactsContract.Contacts._ID}, null, null, null)) {
-            return cur != null && cur.getCount() > 0;      // no contacts yet (a new phone): nobody can be told apart, so everyone rings
+            // no contacts and nobody on Herbarium's own list (a new phone): nobody can be told apart, so everyone rings
+            return cur != null && (cur.getCount() > 0 || list(c, "allowed").length() > 0);
         } catch (Exception e) { return false; }
     }
 

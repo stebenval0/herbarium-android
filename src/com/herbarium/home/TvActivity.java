@@ -49,6 +49,9 @@ public class TvActivity extends Activity {
         refresh();
     }
 
+    /** Back from Android's "turn Bluetooth on" question: start straight away. */
+    @Override protected void onResume() { super.onResume(); if (allowed() && !tv.asking()) tv.start(); refresh(); }
+
     @Override protected void onStop() {
         super.onStop();
         tv.listener = null;
