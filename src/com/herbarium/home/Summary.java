@@ -131,8 +131,12 @@ final class Summary {
     /** "Anna", "Anna (2)" */
     private static String named(String who, int n) { return n > 1 ? who + " (" + n + ")" : who; }
     /** "Messages: Anna (2), Ben, Sam +2": at most three names on a line. */
-    private static void line(List<String> out, String label, List<String> items) {
-        if (items.isEmpty()) return;
+    private static void line(List<String> out, String label, List<String> raw) {
+        if (raw.isEmpty()) return;
+        Map<String, Integer> n = new LinkedHashMap<>();
+        for (String x : raw) n.merge(x, 1, Integer::sum);
+        List<String> items = new ArrayList<>();
+        for (Map.Entry<String, Integer> e : n.entrySet()) items.add(e.getValue() > 1 && !e.getKey().endsWith(")") ? e.getKey() + " (" + e.getValue() + ")" : e.getKey());
         List<String> shown = items.size() > 3 ? new ArrayList<>(items.subList(0, 3)) : items;
         out.add(label + ": " + String.join(", ", shown) + (items.size() > 3 ? " +" + (items.size() - 3) : ""));
     }

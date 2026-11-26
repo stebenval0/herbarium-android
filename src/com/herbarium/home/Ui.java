@@ -59,6 +59,37 @@ final class Ui {
         return r;
     }
 
+    /** Two side by side, at any text size (for short labels: "Phone", "Messages"). */
+    static LinearLayout sideBySide(Context c, Theme t, android.view.View a, android.view.View b) {
+        LinearLayout r = row(c);
+        LinearLayout.LayoutParams l1 = weight(); l1.rightMargin = t.dp(5); LinearLayout.LayoutParams l2 = weight(); l2.leftMargin = t.dp(5);
+        r.addView(a, l1); r.addView(b, l2);
+        return r;
+    }
+
+    /**
+     * Holds a page that must be seen whole, never scrolled (Caretaken Home): when the content is taller than the screen,
+     * it is drawn a little smaller, from the top, until it fits. Touches still land where they look (Android maps them
+     * through the scale).
+     */
+    static final class Fit extends android.widget.FrameLayout {
+        private final android.view.View child; private final android.view.View viewport; private final float min; private final int reserve;
+        /** `reserve`: room kept free at the bottom (the tabs lie over it). */
+        Fit(Context c, android.view.View child, android.view.View viewport, float min, int reserve) {
+            super(c); this.child = child; this.viewport = viewport; this.min = min; this.reserve = reserve;
+            addView(child, new android.widget.FrameLayout.LayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.WRAP_CONTENT));
+            viewport.addOnLayoutChangeListener((v, l, tp, r, b, ol, ot, or, ob) -> { if (b - tp != ob - ot) post(this::requestLayout); });
+        }
+        @Override protected void onMeasure(int w, int h) {
+            measureChildWithMargins(child, w, 0, MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED), 0);
+            int natural = child.getMeasuredHeight(), avail = viewport.getHeight() - reserve;
+            float s = avail <= 0 || natural <= avail ? 1f : Math.max(min, avail / (float) natural);
+            child.setPivotX(MeasureSpec.getSize(w) / 2f); child.setPivotY(0); child.setScaleX(s); child.setScaleY(s);
+            setMeasuredDimension(MeasureSpec.getSize(w), Math.round(natural * s) + reserve);
+        }
+        @Override protected void onLayout(boolean changed, int l, int t, int r, int b) { child.layout(0, 0, r - l, child.getMeasuredHeight()); }
+    }
+
     static TextView centered(TextView v) { v.setGravity(Gravity.CENTER_HORIZONTAL); v.setTextAlignment(View.TEXT_ALIGNMENT_CENTER); return v; }
 
     static LinearLayout column(Context c) { LinearLayout l = new LinearLayout(c); l.setOrientation(LinearLayout.VERTICAL); return l; }

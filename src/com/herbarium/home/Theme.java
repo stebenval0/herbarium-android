@@ -85,6 +85,9 @@ final class Theme {
         return new Theme(c, isNight(c), p.getFloat("scale", 1f), p.getBoolean("steady", true), p.getBoolean("contrast", false));
     }
 
+    /** The same look at another text size (Caretaken Home steps down until it fits the screen whole). */
+    Theme withScale(Context c, float s) { return new Theme(c, night, Math.max(1f, Math.min(scale, s)), steady, contrast); }
+
     /** Swap a colour the engravings are written in for this palette's version. */
     int map(int c) {
         switch (c) {

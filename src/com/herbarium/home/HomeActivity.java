@@ -53,8 +53,13 @@ public class HomeActivity extends Activity {
     private Theme t;
     private String themeKey = "";
     private final Handler ui = new Handler(Looper.getMainLooper());
-    private final ExecutorService bg = Executors.newSingleThreadExecutor();
-    private final ExecutorService plates = Executors.newSingleThreadExecutor();   // plates never wait behind the call log or the summary
+    /** One background thread; work handed to it after Home has closed is quietly dropped (it used to crash Herbarium). */
+    private static ExecutorService worker() {
+        return new java.util.concurrent.ThreadPoolExecutor(1, 1, 0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>(), new java.util.concurrent.ThreadPoolExecutor.DiscardPolicy());
+    }
+    private final ExecutorService bg = worker();
+    private final ExecutorService plates = worker();   // plates never wait behind the call log or the summary
 
     private FrameLayout root, sheet;
     private Deck deck;
@@ -132,12 +137,12 @@ public class HomeActivity extends Activity {
         stoppedAt = 0;
         ui.removeCallbacks(callCheck); ui.post(callCheck);
         if (SetupActivity.needed(this)) startActivity(new Intent(this, SetupActivity.class));   // [onboarding] an unfinished setup comes back to the front
-        if (!themeKey.equals(key(Theme.get(this)))) build();
+        if (!themeKey.equals(key(themeNow()))) build();
         hideBars();
         renderCare(); renderPages(); Care.apply(this);
         try { getContentResolver().registerContentObserver(android.provider.CallLog.Calls.CONTENT_URI, true, callLog); } catch (Exception ignored) {}
         ui.removeCallbacks(tick); ui.post(tick);
-        if (Weather.stale(this)) bg.execute(() -> { if (Weather.refresh(this)) ui.post(() -> { updateWeather(); if (!themeKey.equals(key(Theme.get(this)))) build(); }); });
+        if (Weather.stale(this)) bg.execute(() -> { if (Weather.refresh(this)) ui.post(() -> { updateWeather(); if (!themeKey.equals(key(themeNow()))) build(); }); });
     }
     @Override protected void onPause() { ui.removeCallbacks(callCheck); ui.removeCallbacks(tick); try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} super.onPause(); }
 
@@ -170,7 +175,7 @@ public class HomeActivity extends Activity {
 
     // ------------------------------------------------------------------ building the screen
     private void build() {
-        t = Theme.get(this); themeKey = key(t);
+        t = themeNow(); themeKey = key(t); careDrawn = summaryDrawn = false;
         careBox = null; peoplePage = null; seek = null; grid = null; results = null;   // Caretaken Home has no search or plates
         int W = getResources().getDisplayMetrics().widthPixels, H = getResources().getDisplayMetrics().heightPixels;
         root = new FrameLayout(this);
@@ -203,7 +208,9 @@ public class HomeActivity extends Activity {
         Steady.Scroll csc = new Steady.Scroll(this, t); csc.addView(callsPage, Ui.wide());
         deck.addPage(csc); CALLS = at++;
         homeScroll = new Steady.Scroll(this, t);
-        homeScroll.addView(buildHome(), Ui.wide());
+        // Caretaken: Home is seen whole, at any text size, without scrolling
+        if (Care.on(this)) homeScroll.addView(new Ui.Fit(this, buildHome(), homeScroll, .75f, t.dp(104)), Ui.wide());
+        else homeScroll.addView(buildHome(), Ui.wide());
         deck.addPage(homeScroll); HOME = at++;
         messagesPage = Ui.column(this); messagesPage.setPadding(t.dp(20), t.dp(52), t.dp(20), t.dp(120));
         Steady.Scroll msc = new Steady.Scroll(this, t); msc.addView(messagesPage, Ui.wide());
@@ -314,20 +321,24 @@ public class HomeActivity extends Activity {
 
     private View buildHome() {
         LinearLayout col = Ui.column(this);
-        col.setPadding(0, t.dp(46), 0, t.dp(120));
+        final boolean care = Care.on(this);
+        col.setPadding(0, t.dp(care ? 40 : 46), 0, t.dp(care ? 4 : 120));      // (Caretaken: the room for the tabs is kept by Ui.Fit)
         View moon = new View(this) {
             @Override protected void onDraw(Canvas c) { Paper.moon(c, getWidth() / 2f, getHeight() / 2f, Math.min(getWidth(), getHeight()) / 2f - t.dp(1), t); }
         };
         LinearLayout.LayoutParams mp = Ui.lp(t.dp(t.large() ? 32 : 26), t.dp(t.large() ? 32 : 26)); mp.gravity = Gravity.CENTER_HORIZONTAL;
-        col.addView(moon, mp);
-        time = Ui.centered(Ui.text(this, t, "", 84, t.ink, Theme.regular)); time.setLetterSpacing(-.02f);
+        if (!care) col.addView(moon, mp);      // Caretaken: every line on Home earns its place
+        time = Ui.centered(Ui.text(this, t, "", care ? 60 : 84, t.ink, Theme.regular)); time.setLetterSpacing(-.02f);
         date = Ui.centered(Ui.text(this, t, "", 21, t.sepia, Theme.regular));
         weatherLine = Ui.centered(Ui.caps(this, t, "", 15, t.sepia));
         season = Ui.centered(Ui.caps(this, t, "", 13, t.sage));
         if (t.large()) weatherLine.setTypeface(Theme.regular);
         greeting = Ui.centered(Ui.text(this, t, "", 18, t.sage, Theme.italic));
-        col.addView(time, Ui.wide(t.sdp(2))); col.addView(greeting, Ui.wide(t.sdp(2))); col.addView(date, Ui.wide(t.sdp(4)));
-        col.addView(weatherLine, Ui.wide(t.sdp(8))); col.addView(season, Ui.wide(t.sdp(4)));
+        col.addView(time, Ui.wide(t.sdp(2)));
+        if (!care) col.addView(greeting, Ui.wide(t.sdp(2)));
+        col.addView(date, Ui.wide(t.sdp(4)));
+        if (!(care && t.large())) col.addView(weatherLine, Ui.wide(t.sdp(care ? 4 : 8)));   // Caretaken at big sizes: the calls come before the weather
+        if (!care) col.addView(season, Ui.wide(t.sdp(4)));
         summaryCard = Ui.column(this);
         LinearLayout.LayoutParams scp = Ui.wide(t.sdp(16)); scp.leftMargin = scp.rightMargin = t.dp(22);
         col.addView(summaryCard, scp);
@@ -338,6 +349,7 @@ public class HomeActivity extends Activity {
             col.addView(careBox, cbp);
             // settings are for the helper: a quiet button that opens only after a 3-second hold (no stray tap gets in)
             TextView access = Ui.text(this, t, "For helpers: hold for settings", 16, t.ink, Theme.regular); access.setAlpha(.8f);
+            access.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);       // for the helper: the person's text size needn't make it big
             access.setGravity(Gravity.CENTER); access.setMinHeight(t.target(56)); access.setAlpha(.75f);
             access.setContentDescription("Settings, for helpers. Touch and hold for three seconds.");
             final Runnable openSettings = () -> startActivity(new Intent(this, AccessActivity.class));
@@ -347,7 +359,7 @@ public class HomeActivity extends Activity {
                     ui.removeCallbacks(openSettings); access.setText("For helpers: hold for settings"); }
                 return true;
             });
-            col.addView(access, Ui.wide(t.sdp(30)));
+            col.addView(access, Ui.wide(t.sdp(14)));
             return col;
         }
 
@@ -596,12 +608,45 @@ public class HomeActivity extends Activity {
         if (messagesPage != null) HomePages.fillMessages(this, t, messagesPage, bg, ui);
     }
 
+    // ---- Caretaken Home is always seen whole: at big text sizes it steps the size down until everything fits
+    private static final float FIT_STEP = .25f;
+    /** The theme Home is drawn with: the person's own, or in Caretaken mode the largest size that fits. */
+    private Theme themeNow() {
+        Theme base = Theme.get(this);
+        if (!Care.on(this)) return base;
+        android.content.SharedPreferences p = Theme.prefs(this);
+        if (p.getFloat("careFitBase", 0) != base.scale) return base;       // the person changed the text size: start again
+        float fit = p.getFloat("careFit", 0);
+        return fit > 0 ? base.withScale(this, Math.max(fit, base.scale * .5f)) : base;
+    }
+    private boolean careDrawn, summaryDrawn; private int careItems, summaryItems;
+    /** Once the calls, favourites and summary are all on screen: too tall? one step smaller. Less to show than last time? start again. */
+    private void checkCareFit() {
+        if (!Care.on(this) || homeScroll == null || homeScroll.getChildCount() == 0 || !careDrawn || !summaryDrawn) return;
+        ui.postDelayed(() -> {
+            if (homeScroll == null || homeScroll.getChildCount() == 0 || homeScroll.getHeight() == 0) return;
+            android.content.SharedPreferences p = Theme.prefs(this);
+            Theme base = Theme.get(this);
+            int sig = careItems * 100 + summaryItems;      // what there is to show (calls, favourites, summary lines), not how it's drawn
+            int savedSig = p.getInt("careFitSig", -1);
+            if (savedSig != -1 && sig < savedSig && t.scale < base.scale) {         // fewer things now: try the person's own size again
+                p.edit().putFloat("careFit", 0).putInt("careFitSig", sig).apply(); build(); return;
+            }
+            int content = homeScroll.getChildAt(0).getHeight() - t.dp(104), room = homeScroll.getHeight() - t.dp(104);   // (the tabs' room is in both)
+            float floor = Math.max(1f, base.scale * .5f);        // never below half of the person's size: past that, the page is drawn a little smaller instead
+            if (content > room + t.dp(2) && t.scale > floor + .01f) {
+                p.edit().putFloat("careFitBase", base.scale).putFloat("careFit", Math.max(floor, t.scale - FIT_STEP)).putInt("careFitSig", sig).apply();
+                build();
+            } else if (sig != savedSig) p.edit().putInt("careFitSig", sig).apply();
+        }, 60);
+    }
+
     private void renderCare() {
         if (careBox != null) {
             final LinearLayout box = careBox;
             bg.execute(() -> {          // the call log and contacts are read off the main thread (a cold provider can take seconds)
                 List<Missed.Call> w = Missed.waiting(this); List<CarePages.Person> f = CarePages.starred(this);
-                ui.post(() -> { if (careBox == box && !isDestroyed()) CarePages.fill(this, t, box, this::renderCare, () -> deck.go(CALLS, true), w, f); });
+                ui.post(() -> { if (careBox == box && !isDestroyed()) { CarePages.fill(this, t, box, this::renderCare, () -> deck.go(CALLS, true), w, f); careItems = w.size() * 10 + f.size(); careDrawn = true; checkCareFit(); } });
             });
         }
         if (peoplePage != null) CarePages.fillPeople(this, t, peoplePage);
@@ -613,20 +658,23 @@ public class HomeActivity extends Activity {
         final LinearLayout card = summaryCard;
         bg.execute(() -> {           // reads the call log and contacts: never on the main thread
             Summary s = Summary.of(this);
-            ui.post(() -> { if (summaryCard == card && !isDestroyed()) showSummary(s); });
+            ui.post(() -> { if (summaryCard == card && !isDestroyed()) { showSummary(s); summaryItems = s.headline.split("\n").length; summaryDrawn = true; checkCareFit(); } });
         });
     }
 
     private void showSummary(Summary s) {
         summaryCard.removeAllViews();
-        TextView h = Ui.text(this, t, s.styled(t), 20, t.ink, Theme.regular);
+        TextView h = Ui.text(this, t, s.styled(t), Care.on(this) && t.large() ? 17 : 20, t.ink, Theme.regular);
         if (s.first.isEmpty() && s.quieter.isEmpty()) Ui.centered(h);
         summaryCard.addView(h, Ui.wide());
         if (s.first.isEmpty() && s.quieter.isEmpty()) return;
         TextView read = Ui.button(this, t, "Read it to me", v -> speak(Summary.of(this).spoken()));
         TextView see = Ui.button(this, t, "See them all", v -> openNotes());
         read.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(14)); see.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(14));
-        if (Summary.canSpeak(this)) summaryCard.addView(Ui.pair(this, t, read, see), Ui.wide(t.sdp(10)));
+        if (Care.on(this) && t.large()) {      // one button, and the lines themselves open the list
+            Steady.tap(h, t, v -> openNotes());
+            if (Summary.canSpeak(this)) summaryCard.addView(read, Ui.wide(t.sdp(8)));
+        } else if (Summary.canSpeak(this)) summaryCard.addView(Care.on(this) ? Ui.sideBySide(this, t, read, see) : Ui.pair(this, t, read, see), Ui.wide(t.sdp(10)));
         else summaryCard.addView(see, Ui.wide(t.sdp(10)));
     }
 
@@ -768,7 +816,7 @@ public class HomeActivity extends Activity {
         int h = d.get(Calendar.HOUR) == 0 ? 12 : d.get(Calendar.HOUR);
         String hm = h + ":" + String.format(Locale.US, "%02d", d.get(Calendar.MINUTE));
         if (time != null) time.setText(hm);
-        if (date != null) date.setText(t.huge() ? DAYS[d.get(Calendar.DAY_OF_WEEK) - 1] + " " + d.get(Calendar.DAY_OF_MONTH) + " " + MONTHS[d.get(Calendar.MONTH)]
+        if (date != null) date.setText(t.huge() || (Care.on(this) && t.large()) ? DAYS[d.get(Calendar.DAY_OF_WEEK) - 1] + " " + d.get(Calendar.DAY_OF_MONTH) + " " + MONTHS[d.get(Calendar.MONTH)]
                 : longDate());
         if (greeting != null) {
             String n = Theme.prefs(this).getString("name", ""); int hh = d.get(Calendar.HOUR_OF_DAY);
@@ -777,7 +825,7 @@ public class HomeActivity extends Activity {
         }
         if (season != null) season.setText(Engraving.SEASON_NAMES[Engraving.season(d)].toUpperCase(Locale.ROOT));
         if (stripTime != null) stripTime.setText(hm);
-        if (!themeKey.equals(key(Theme.get(this)))) build();   // sunset, sunrise or a new day
+        if (!themeKey.equals(key(themeNow()))) build();   // sunset, sunrise or a new day
     }
 
     private void updateStrip() {

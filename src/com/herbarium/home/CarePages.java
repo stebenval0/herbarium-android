@@ -44,15 +44,24 @@ final class CarePages {
         if (Guard.instance == null)
             box.addView(warning(a, t, "Ask a helper: Herbarium's protection is off.", "Settings → Accessibility → Herbarium: switch it off and on again."), Ui.wide(t.sdp(10)));
         if (!waiting.isEmpty()) {
-            box.addView(Ui.heading(a, t, waiting.size() == 1 ? "Someone called you" : "People who called you"));
-            for (Missed.Call m : waiting) box.addView(missedCard(a, t, m, refresh), Ui.wide(t.sdp(10)));
+            if (!t.large()) box.addView(Ui.heading(a, t, waiting.size() == 1 ? "Someone called you" : "People who called you"));   // (the card says it)
+            // big text: the newest call to return in full, the others counted (all of them are on the Calls page)
+            int show = t.large() ? 1 : waiting.size();
+            for (int i = 0; i < show; i++) box.addView(missedCard(a, t, waiting.get(i), refresh), Ui.wide(t.sdp(10)));
+            if (waiting.size() > show) box.addView(Ui.text(a, t, "and " + Summary.count(waiting.size() - show, "other call") + " to return (Contacts)", 17, t.sepia, Theme.italic), Ui.wide(t.sdp(6)));
         } else if (!Missed.canRead(a)) {
             box.addView(Ui.text(a, t, "Missed calls will show here once Herbarium may see them (Settings → Caretaken).", 16, t.sepia, Theme.italic), Ui.wide(t.sdp(8)));
         }
 
         // favourites look nothing like a missed call: round portraits under "Call someone", an action to choose,
         // never news (no times, no "called you")
-        if (!fav.isEmpty()) {
+        if (!fav.isEmpty() && t.large()) {      // big text: a name button each, two to a row (portraits would push things off the screen)
+            box.addView(new View(a), Ui.lp(1, t.dp(14)));
+            for (int i = 0; i < fav.size(); i += 2) {
+                View x = favButton(a, t, fav.get(i)), y = i + 1 < fav.size() ? favButton(a, t, fav.get(i + 1)) : new View(a);
+                box.addView(Ui.sideBySide(a, t, x, y), Ui.wide(t.sdp(8)));
+            }
+        } else if (!fav.isEmpty()) {
             box.addView(Ui.heading(a, t, "Call someone"));
             int cols = t.huge() ? 1 : 2;
             LinearLayout row = null;
@@ -65,18 +74,26 @@ final class CarePages {
             if (fav.size() % cols != 0 && row != null) row.addView(new View(a), Ui.weight());   // keep the last one its proper size
         }
 
-        box.addView(Ui.heading(a, t, "Your phone"));
+        if (!t.large()) box.addView(Ui.heading(a, t, "Your phone"));
+        else box.addView(new View(a), Ui.lp(1, t.dp(14)));
         TextView phone = tile(a, t, "Phone", "Dial a number", v -> open(a, Apps.dialer(a), new Intent(Intent.ACTION_DIAL)));
         TextView msgs = tile(a, t, "Messages", "Read and send texts", v -> open(a, Apps.messages(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)));
         TextView people = tile(a, t, "Contacts", "Everyone you know", v -> everyone.run());   // Herbarium's own list, never Android's Contacts app
-        box.addView(phone, Ui.wide(t.sdp(4)));
-        box.addView(msgs, Ui.wide(t.sdp(10)));
-        box.addView(people, Ui.wide(t.sdp(10)));
         TextView vm = tile(a, t, "Voicemail", "Listen to messages people left", v -> DialActivity.voicemail(a));
-        box.addView(vm, Ui.wide(t.sdp(10)));
+        // two to a row (short words fit at any size), so the whole of Home fits on the screen
+        box.addView(Ui.sideBySide(a, t, phone, msgs), Ui.wide(t.sdp(4)));
+        box.addView(Ui.sideBySide(a, t, people, vm), Ui.wide(t.sdp(10)));
         TextView sos = tile(a, t, "Emergency call (" + DialActivity.emergencyNumber(a) + ")", "Opens the number pad with the emergency number typed in", v -> DialActivity.emergency(a));
         sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e);
-        box.addView(sos, Ui.wide(t.sdp(18)));
+        box.addView(sos, Ui.wide(t.sdp(10)));
+    }
+
+    /** A favourite as one big button with their name: tap to call. */
+    private static View favButton(Activity a, Theme t, Person p) {
+        TextView b = Ui.button(a, t, p.name, v -> Missed.callBack(a, p.number));
+        b.setMaxLines(2); Ui.wholeWords(b, 12);
+        b.setContentDescription("Call " + p.name);
+        return b;
     }
 
     /** A plain warning card: what's wrong, and what to do. */
@@ -101,15 +118,23 @@ final class CarePages {
         String who = Missed.first(m.name);
         TextView name = Ui.wholeWords(Ui.text(a, t, m.name + " called", 26, t.ink, Theme.semi), 16);
         card.addView(name, Ui.wide());
-        String when = when(m.at) + (m.times > 1 ? " · " + Summary.count(m.times, "time").replace("a time", "once") : "");
-        card.addView(Ui.text(a, t, when, 18, t.sepia, Theme.regular), Ui.wide(t.sdp(4)));
+        String when = when(m.at) + (m.times > 1 && !t.large() ? " · " + Summary.count(m.times, "time").replace("a time", "once") : "");
+        card.addView(Ui.text(a, t, when, t.large() ? 16 : 18, t.sepia, Theme.regular), Ui.wide(t.sdp(4)));
         TextView call = Ui.primary(a, t, "Call " + who + " back", v -> Missed.callBack(a, m.number));
         call.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.btn(22));
         call.setMinHeight(Math.round(t.dp(84) * (1 + (t.scale - 1) * .35f)));
         call.setContentDescription("Call " + m.name + " back");
-        card.addView(call, Ui.wide(t.sdp(14)));
         TextView later = Ui.button(a, t, "Not now", v -> { Missed.aside(a, m.number); refresh.run(); });
-        card.addView(later, Ui.wide(t.sdp(10)));
+        if (t.large()) {          // side by side: the call back wide, "Not now" narrow
+            LinearLayout r = Ui.row(a);
+            LinearLayout.LayoutParams cw = Ui.weight(); cw.weight = 2; cw.rightMargin = t.dp(8);
+            r.addView(call, cw); r.addView(later, Ui.weight());
+            Ui.wholeWords(later, 12);
+            card.addView(r, Ui.wide(t.sdp(10)));
+        } else {
+            card.addView(call, Ui.wide(t.sdp(14)));
+            card.addView(later, Ui.wide(t.sdp(10)));
+        }
         return card;
     }
 
@@ -208,6 +233,7 @@ final class CarePages {
         v.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.btn(21));
         v.setMinHeight(Math.round(t.dp(76) * (1 + (t.scale - 1) * .35f)));
         v.setContentDescription(title + ": " + detail);
+        Ui.wholeWords(v, 12);       // half-width tiles at big text: the word shrinks a little rather than break
         return v;
     }
 
