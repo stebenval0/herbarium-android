@@ -87,6 +87,12 @@ public class DialActivity extends Activity {
         msg.setText(""); msg.setVisibility(android.view.View.GONE);
     }
 
+    /** Opened over the lock screen for an emergency and left without calling: Herbarium's lock face comes back, never Android's. */
+    @Override public void finish() {
+        super.finish();
+        if (getIntent().getBooleanExtra("emergency", false)) LockActivity.show(this);
+    }
+
     /** The local emergency number. */
     static String emergencyNumber(android.content.Context c) {
         android.telephony.TelephonyManager tm = c.getSystemService(android.telephony.TelephonyManager.class);

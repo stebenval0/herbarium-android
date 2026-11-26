@@ -80,24 +80,40 @@ public class LockActivity extends Activity {
         openButton = open;
         open.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.sp(22));
         LinearLayout.LayoutParams op = Ui.wide(); op.leftMargin = op.rightMargin = t.dp(30);
-        col.addView(open, op);
+        // Open (and Emergency call) sit in a bar pinned to the bottom: always on screen, however big the text
+        LinearLayout bar = Ui.column(this); bar.setGravity(Gravity.CENTER_HORIZONTAL);
+        bar.setPadding(t.dp(28), t.sdp(10), t.dp(28), t.dp(24));
         if (Care.on(this)) {      // as Android's own lock screen does: an emergency call without unlocking
-            TextView sos = Ui.button(this, t, "Emergency call", v -> DialActivity.emergency(this));
+            TextView sos = Ui.button(this, t, t.large() ? "Emergency" : "Emergency call", v -> DialActivity.emergency(this));
             sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e);
-            LinearLayout.LayoutParams ep = Ui.wide(t.sdp(12)); ep.leftMargin = ep.rightMargin = t.dp(60);
-            col.addView(sos, ep);
-        }
-        col.setOnApplyWindowInsetsListener((v, in) -> {
+            sos.setContentDescription("Emergency call"); Ui.wholeWords(sos, 12);
+            if (t.large()) {          // one row, so the call to return keeps the screen
+                open.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.btn(19)); sos.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.btn(19));
+                LinearLayout row = Ui.row(this);
+                LinearLayout.LayoutParams a = Ui.weight(); a.rightMargin = t.dp(8);
+                row.addView(open, a); row.addView(sos, Ui.weight());
+                bar.addView(row, Ui.wide());
+            } else {
+                bar.addView(open, op);
+                LinearLayout.LayoutParams ep = Ui.wide(t.sdp(12)); ep.leftMargin = ep.rightMargin = t.dp(60);
+                bar.addView(sos, ep);
+            }
+        } else bar.addView(open, op);
+        bar.setOnApplyWindowInsetsListener((v, in) -> {
             int nav = in.getInsets(WindowInsets.Type.navigationBars()).bottom;
-            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), nav + t.dp(24));
+            v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), nav + t.dp(16));
             return in;
         });
+        col.setPadding(col.getPaddingLeft(), col.getPaddingTop(), col.getPaddingRight(), t.dp(8));
         // big text can make the face taller than the screen: it scrolls, so Call back and Open are always reachable
         android.widget.ScrollView scroll = new android.widget.ScrollView(this);
         scroll.setFillViewport(true); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        scroll.setBackground(col.getBackground()); col.setBackground(null);
+        LinearLayout root = Ui.column(this);
+        root.setBackground(col.getBackground()); col.setBackground(null);
         scroll.addView(col, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        setContentView(scroll);
+        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        root.addView(bar, Ui.wide());
+        setContentView(root);
         wxLine = wx;
         warmVoice();
         WindowInsetsController c = getWindow().getInsetsController();
@@ -135,13 +151,13 @@ public class LockActivity extends Activity {
         if (openButton != null && openButton.getParent() instanceof ViewGroup && (openButton.getTag() == null || (boolean) openButton.getTag() != any)) {
             ViewGroup p = (ViewGroup) openButton.getParent(); int at = p.indexOfChild(openButton); ViewGroup.LayoutParams lp = openButton.getLayoutParams();
             TextView o = any ? Ui.button(this, th, "Open", v -> unlock()) : Ui.primary(this, th, "Open", v -> unlock());
-            o.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.sp(22)); o.setTag(any);
+            o.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.large() ? th.btn(19) : th.sp(22)); o.setTag(any);
             p.removeViewAt(at); p.addView(o, at, lp); openButton = o;
         }
-        for (int i = 0; i < w.size() && i < 2; i++) {
+        for (int i = 0; i < w.size() && i < (th.large() ? 1 : 2); i++) {     // big text: one at a time, so its button is on screen
             Missed.Call m = w.get(i);
             String who = Missed.first(m.name);
-            TextView said = Ui.wholeWords(Ui.centered(Ui.text(this, th, m.name + " called you", 27, th.ink, Theme.semi)), 16);
+            TextView said = Ui.wholeWords(Ui.centered(Ui.text(this, th, m.name + " called you", th.large() ? 20 : 27, th.ink, Theme.semi)), 16);
             calls.addView(said, Ui.wide(i == 0 ? 0 : th.sdp(18)));
             // Caretaken mode: calling back needs no unlocking (the call screen shows over the lock, so Android's PIN
             // screen never appears); otherwise the phone is opened first, as usual
@@ -152,7 +168,8 @@ public class LockActivity extends Activity {
             LinearLayout.LayoutParams cp = Ui.wide(th.sdp(10)); cp.leftMargin = cp.rightMargin = th.dp(10);
             calls.addView(call, cp);
         }
-        if (w.size() > 2) calls.addView(Ui.centered(Ui.text(this, th, "and " + Summary.count(w.size() - 2, "other call") + " to return", 18, th.sepia, Theme.italic)), Ui.wide(th.sdp(10)));
+        int shownCalls = Math.min(w.size(), th.large() ? 1 : 2);
+        if (w.size() > shownCalls) calls.addView(Ui.centered(Ui.text(this, th, "and " + Summary.count(w.size() - shownCalls, "other call") + " to return", 18, th.sepia, Theme.italic)), Ui.wide(th.sdp(10)));
     }
     /** Unlocked some other way (fingerprint, face): step aside at once, not at the next tick. */
     private final android.content.BroadcastReceiver present = new android.content.BroadcastReceiver() {
