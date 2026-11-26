@@ -107,10 +107,19 @@ public class ThreadActivity extends Activity {
         GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.sdp(14)); g.setStroke(t.dp(1.2f), t.sepia); g.setColor(t.night ? 0x661e2650 : 0xccf3ecda);
         box.setBackground(g); box.setPadding(t.sdp(12), t.sdp(8), t.sdp(12), t.sdp(8));
         if (draft != null) box.setText(draft);
-        compose.addView(box, Ui.weight());
+        box.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);
         TextView send = Ui.primary(this, t, "Send", v -> send());
-        LinearLayout.LayoutParams sp = Ui.lp(Math.round(t.dp(96) * (1 + (t.scale - 1) * .3f)), ViewGroup.LayoutParams.WRAP_CONTENT); sp.leftMargin = t.dp(10);
-        compose.addView(send, sp);
+        if (t.large()) {          // big text: the box takes the whole width and Send sits under it
+            compose.setOrientation(LinearLayout.VERTICAL);
+            box.setMaxLines(3);
+            box.setTextSize(TypedValue.COMPLEX_UNIT_SP, Math.min(t.sp(20), 40));   // the messages above stay the biggest text
+            compose.addView(box, Ui.wide());
+            compose.addView(send, Ui.wide(t.dp(8)));
+        } else {
+            compose.addView(box, Ui.weight());
+            LinearLayout.LayoutParams sp = Ui.lp(Math.round(t.dp(96) * (1 + (t.scale - 1) * .3f)), ViewGroup.LayoutParams.WRAP_CONTENT); sp.leftMargin = t.dp(10);
+            compose.addView(send, sp);
+        }
         root.addView(compose, Ui.wide());
         this.compose = compose;
         root.setOnApplyWindowInsetsListener((v, in) -> {
@@ -304,7 +313,7 @@ public class ThreadActivity extends Activity {
         // some senders (names like "AMAZON") can't be written back to
         boolean canReply = !addresses.isEmpty() && !addresses.get(0).matches(".*[A-Za-z].*");
         box.setEnabled(canReply);
-        box.setHint(canReply ? (group ? "Write to everyone…" : "Write to " + Missed.first(name) + "…") : "This sender can't be written back to");
+        box.setHint(canReply ? (t.large() || name.matches("[+0-9() -]+") ? "Write…" : group ? "Write to everyone…" : "Write to " + Missed.first(name) + "…") : "Can't reply to this sender");
     }
 
     /** One message, as a card: mine on the right in sage, theirs on the left on paper. */

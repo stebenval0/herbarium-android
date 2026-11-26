@@ -52,14 +52,16 @@ final class Summary {
          *  never reads "CALENDAR / Calendar". */
         String cardLine() {
             Notes.Note n = latest();
-            if (person || n.call || !title.equals(n.app)) return line();
+            if (n.call) return n.title.isEmpty() ? "A call" : n.title;
+            if (person || !title.equals(n.app)) return line();
             if (notes.size() > 1) return capital(count(notes.size(), "notice"));
             String own = ownTitle(n);
             return !own.isEmpty() ? own : !n.text.isEmpty() ? n.text : title;
         }
         String cardDetail() {
             Notes.Note n = latest();
-            if (person || n.call || !title.equals(n.app) || notes.size() > 1) return detail();
+            if (n.call) return n.text;
+            if (person || !title.equals(n.app) || notes.size() > 1) return detail();
             return ownTitle(n).isEmpty() ? "" : n.text;      // with no title of its own, the text is already the line
         }
         /** What the notice itself is about, in a few words: its own title, else its text. */
@@ -76,7 +78,8 @@ final class Summary {
     static Summary of(Context c) {
         Set<String> blocked = State.locked(c) ? State.packages(c) : new java.util.HashSet<>();
         List<Notes.Note> all = new ArrayList<>();
-        for (Missed.Call m : Missed.waiting(c, !Care.on(c))) {      // missed calls (Herbarium is the phone app, so they're not in Android's list)
+        // (Caretaken Home already has a big card for each call to return)
+        if (!Care.on(c)) for (Missed.Call m : Missed.waiting(c, true)) {      // missed calls (Herbarium is the phone app, so they're not in Android's list)
             Notes.Note n = new Notes.Note();
             n.key = Notes.MISSED + m.number; n.pkg = c.getPackageName(); n.app = "Phone"; n.title = m.name;
             n.text = m.times > 1 ? "called " + m.times + " times" : ""; n.person = ""; n.when = m.at;
