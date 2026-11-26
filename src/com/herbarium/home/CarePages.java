@@ -76,7 +76,7 @@ final class CarePages {
         g.setColor(t.night ? 0x552c3870 : 0xccf3ecda); g.setStroke(t.dp(t.contrast ? 3 : 2), t.night ? t.gold : 0xff9a7428);
         card.setBackground(g);
         String who = Missed.first(m.name);
-        TextView name = Ui.text(a, t, m.name + " called", 26, t.ink, Theme.semi);
+        TextView name = Ui.wholeWords(Ui.text(a, t, m.name + " called", 26, t.ink, Theme.semi), 16);
         card.addView(name, Ui.wide());
         String when = when(m.at) + (m.times > 1 ? " · " + Summary.count(m.times, "time").replace("a time", "once") : "");
         card.addView(Ui.text(a, t, when, 18, t.sepia, Theme.regular), Ui.wide(t.sdp(4)));
@@ -110,7 +110,7 @@ final class CarePages {
         g.setColor(t.night ? 0x332c3870 : 0x66f3ecda); g.setStroke(t.dp(1), 0x556e5d45);
         r.setBackground(g);
         LinearLayout words = Ui.column(a);
-        TextView name = Ui.text(a, t, p.name, 22, t.ink, Theme.regular);
+        TextView name = Ui.wholeWords(Ui.text(a, t, p.name, 22, t.ink, Theme.regular), 16);
         name.setMaxLines(2);
         words.addView(name, Ui.wide());
         if (detail != null) words.addView(Ui.text(a, t, detail, 15, t.sepia, Theme.regular), Ui.wide(t.sdp(2)));

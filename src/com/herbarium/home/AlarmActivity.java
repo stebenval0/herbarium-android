@@ -141,7 +141,7 @@ public class AlarmActivity extends Activity {
 
     /** Press the clock app's own control, then step away (the clock's notice goes, and so does this screen). */
     private void press(PendingIntent p, boolean stopping) {
-        try { if (p != null) p.send(); } catch (Exception ignored) {}
+        Notes.send(this, p);
         now = null;
         finish(); overridePendingTransition(0, 0);
         LockActivity.show(this);          // back to Herbarium's lock screen, not the clock's or Android's

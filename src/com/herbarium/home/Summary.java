@@ -40,6 +40,21 @@ final class Summary {
             for (Notes.Note x : notes) { String w = x.person != null && !x.person.isEmpty() ? x.person : x.title; if (!w.isEmpty() && !who.contains(w) && who.size() < 4) who.add(w); }
             return who.isEmpty() ? join(n.title, n.text) : String.join(", ", who);
         }
+        /** A card's main line, under a heading that already names the app: the notice's own title, so a card
+         *  never reads "CALENDAR / Calendar". */
+        String cardLine() {
+            Notes.Note n = latest();
+            if (person || n.call || !title.equals(n.app)) return line();
+            if (notes.size() > 1) return capital(count(notes.size(), "notice"));
+            String own = ownTitle(n);
+            return !own.isEmpty() ? own : !n.text.isEmpty() ? n.text : title;
+        }
+        String cardDetail() {
+            Notes.Note n = latest();
+            if (person || n.call || !title.equals(n.app) || notes.size() > 1) return detail();
+            return ownTitle(n).isEmpty() ? "" : n.text;      // with no title of its own, the text is already the line
+        }
+        private static String ownTitle(Notes.Note n) { return n.title.equalsIgnoreCase(n.app) ? "" : n.title; }
     }
 
     private Summary(String h, int r) { headline = h; resting = r; }

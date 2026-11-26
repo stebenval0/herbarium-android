@@ -77,6 +77,7 @@ final class Apps {
             out.add(new App(c.getPackageName(), DialActivity.class.getName(), "Phone"));
             for (ResolveInfo r : pm.queryIntentActivities(new Intent(Intent.ACTION_DIAL), 0)) replaced.add(r.activityInfo.packageName);
         }
+        out.add(new App(c.getPackageName(), TvActivity.class.getName(), "Television"));   // Bluetooth: works when the Wi-Fi doesn't
         replaced.remove(c.getPackageName());
         replaced.remove("com.google.android.contacts"); replaced.remove("com.android.contacts");   // Contacts also dials; keep it
         for (ResolveInfo r : pm.queryIntentActivities(main, 0)) {
@@ -114,7 +115,7 @@ final class Apps {
         String dialer = defaultDialer(c), sms = Telephony.Sms.getDefaultSmsPackage(c);
         for (App a : apps) {
             if (HIDDEN.contains(a.pkg) && !place.containsKey(a.pkg)) continue;
-            String ch = place.get(a.pkg);
+            String ch = TvActivity.class.getName().equals(a.act) ? "Reading & TV" : place.get(a.pkg);
             if (ch == null) ch = guess(c, a, dialer, sms);
             Chapter target = chs.get(ch);
             if (target == null) { target = new Chapter(ch); chs.put(ch, target); }

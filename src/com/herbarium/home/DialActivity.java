@@ -65,7 +65,7 @@ public class DialActivity extends Activity {
         android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable(); gd.setCornerRadius(t.sdp(20)); gd.setColor(t.night ? 0xff6fae86 : 0xff3f7a55);
         call.setBackground(gd); call.setTextColor(0xfff6f1e2);
         col.addView(call, Ui.wide(t.sdp(16)));
-        TextView del = Ui.button(this, t, "Delete a number", v -> { if (number.length() > 0) number.setLength(number.length() - 1); show(); });
+        TextView del = Ui.button(this, t, "Delete last digit", v -> { if (number.length() > 0) number.setLength(number.length() - 1); show(); });
         Steady.repeatable(del);
         TextView back = Ui.button(this, t, "Back", v -> finish());
         col.addView(Ui.pair(this, t, del, back), Ui.wide(t.sdp(12)));

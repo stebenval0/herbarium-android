@@ -24,13 +24,29 @@ final class Ui {
     }
     static TextView body(Context c, Theme t, CharSequence s, float sp) { return text(c, t, s, sp, t.ink, Theme.regular); }
 
+    /** Never split a word across lines: a long surname on a narrow screen (or at a large text size) would
+     *  otherwise break mid-word ("Durgumu / munum"). Shrinks the type just enough for the widest word, not below minSp. */
+    static TextView wholeWords(TextView v, float minSp) {
+        v.addOnLayoutChangeListener((view, l, tp, r, b, ol, ot, or, ob) -> {
+            int w = v.getWidth() - v.getTotalPaddingLeft() - v.getTotalPaddingRight();
+            if (w <= 0) return;
+            float widest = 0;
+            for (String word : v.getText().toString().split("\\s+")) widest = Math.max(widest, v.getPaint().measureText(word));
+            if (widest <= w) return;
+            float min = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, minSp, v.getResources().getDisplayMetrics());
+            float px = Math.max(min, (float) Math.floor(v.getTextSize() * w / widest * .97f));
+            if (px < v.getTextSize()) v.post(() -> v.setTextSize(TypedValue.COMPLEX_UNIT_PX, px));
+        });
+        return v;
+    }
+
     /** The small-capitals headings of the web version ("PHONE", "AUTUMN"), set in Literata. */
     static TextView caps(Context c, Theme t, String s, float sp, int color) {
         // spaced small capitals at ordinary sizes; at big sizes, longer phrases stay in ordinary case so they don't wrap
         boolean upper = !t.large() || s.length() <= 12;
         TextView v = text(c, t, upper ? s.toUpperCase(java.util.Locale.ROOT) : s, sp * (upper ? .86f : .95f), color, Theme.semi);
         v.setLetterSpacing(t.large() ? .04f : .08f);      // spaced enough to feel engraved, not so much that words fall apart
-        return v;
+        return wholeWords(v, 11);                           // big titles at large sizes: "MESSAGES", never "MESSAG / ES"
     }
 
     /** Two buttons side by side, or one above the other once the text is large. */
@@ -90,13 +106,16 @@ final class Ui {
         LinearLayout words = column(c);
         words.addView(body(c, t, title, 20));
         if (detail != null) { TextView d = text(c, t, detail, 16, t.sepia, Theme.regular); words.addView(d, wide(t.sdp(4))); }
-        r.addView(words, weight());
+        // at large sizes the switch goes under the words: beside them, the words had a sliver of width and broke apart
+        boolean stack = t.large();
+        if (stack) { r.setOrientation(LinearLayout.VERTICAL); r.addView(words, wide()); } else r.addView(words, weight());
         TextView pill = caps(c, t, on ? "On" : "Off", 15, on ? (t.night ? 0xff1e2650 : 0xfff3ecda) : t.sepia);
         pill.setGravity(Gravity.CENTER); pill.setMinWidth(t.sdp(76)); pill.setPadding(t.sdp(12), t.sdp(10), t.sdp(12), t.sdp(10));
         GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.sdp(20));
         if (on) g.setColor(t.sage); else g.setStroke(t.dp(1.4f), t.sepia);
         pill.setBackground(g);
-        LinearLayout.LayoutParams pp = lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); pp.leftMargin = t.sdp(14);
+        LinearLayout.LayoutParams pp = lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        if (stack) pp.topMargin = t.sdp(8); else pp.leftMargin = t.sdp(14);
         r.addView(pill, pp);
         // one control for screen readers: "Steadier taps, on, switch"
         r.setContentDescription(title + (detail != null ? ". " + detail : ""));

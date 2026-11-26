@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.herbarium.home" android:versionCode="1" android:versionName="2.0">
     <uses-sdk android:minSdkVersion="30" android:targetSdkVersion="34"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE"/>
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.READ_CALL_LOG"/>
@@ -63,6 +66,7 @@
         <service android:name=".Dream" android:exported="true" android:label="Herbarium" android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter><action android:name="android.service.dreams.DreamService"/><category android:name="android.intent.category.DEFAULT"/></intent-filter>
         </service>
+        <activity android:name=".TvActivity" android:exported="false" android:screenOrientation="portrait" android:label="Television" android:taskAffinity="com.herbarium.home.tv"/>
         <activity android:name=".NotNowActivity" android:exported="false" android:excludeFromRecents="true"
             android:launchMode="singleInstance" android:taskAffinity="com.herbarium.home.notnow" android:screenOrientation="portrait"/>
 

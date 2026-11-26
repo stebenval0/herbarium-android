@@ -115,7 +115,7 @@ public class LockActivity extends Activity {
         for (int i = 0; i < w.size() && i < 2; i++) {
             Missed.Call m = w.get(i);
             String who = Missed.first(m.name);
-            TextView said = Ui.centered(Ui.text(this, th, m.name + " called you", 27, th.ink, Theme.semi));
+            TextView said = Ui.wholeWords(Ui.centered(Ui.text(this, th, m.name + " called you", 27, th.ink, Theme.semi)), 16);
             calls.addView(said, Ui.wide(i == 0 ? 0 : th.sdp(18)));
             // Caretaken mode: calling back needs no unlocking (the call screen shows over the lock, so Android's PIN
             // screen never appears); otherwise the phone is opened first, as usual

@@ -258,6 +258,8 @@ public class HomeActivity extends Activity {
             float min = Float.MAX_VALUE;
             for (TextView tab : tabs) min = Math.min(min, tab.getTextSize());
             for (TextView tab : tabs) { tab.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_NONE); tab.setTextSize(TypedValue.COMPLEX_UNIT_PX, min); }
+            // then even gaps between the words (equal cells left CALLS adrift and MESSAGES touching WEATHER)
+            for (TextView tab : tabs) tab.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
         });
         return r;
     }
@@ -350,8 +352,10 @@ public class HomeActivity extends Activity {
         seek.addTextChangedListener(new TextWatcher() {
             public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             public void onTextChanged(CharSequence s, int a, int b, int c) {}
-            public void afterTextChanged(Editable e) { clear.setVisibility(e.length() > 0 ? View.VISIBLE : View.GONE); renderResults(); }
+            public void afterTextChanged(Editable e) { clear.setVisibility(e.length() > 0 ? View.VISIBLE : View.GONE); renderResults(); if (e.length() > 0) liftSeek(seekWrap); }
         });
+        // the results must show above the keyboard: bring the search line up to the top of the screen
+        seek.setOnFocusChangeListener((v, has) -> { if (has) liftSeek(seekWrap); });
         seek.setOnEditorActionListener((v, id, ev) -> { if (results.getChildCount() > 0 && results.getChildAt(0).getTag() instanceof Apps.App) { Apps.launch(this, (Apps.App) results.getChildAt(0).getTag()); } return true; });
 
         // the plates
@@ -389,6 +393,7 @@ public class HomeActivity extends Activity {
         int W = getResources().getDisplayMetrics().widthPixels - t.dp(28);
         int cellW = W / cols, gap = t.dp(cols == 1 ? 40 : 6);
         int plateW = Math.min(cellW - gap * 2, t.dp(cols == 1 ? 220 : 400));
+        List<TextView> names = new ArrayList<>();
         for (int i = 0; i < chapters.size(); i++) {
             Apps.Chapter c = chapters.get(i);
             LinearLayout cell = Ui.column(this); cell.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -403,6 +408,7 @@ public class HomeActivity extends Activity {
             cell.addView(plate, Ui.lp(plateW, Math.round(plateW * 320f / 200f)));
             TextView name = Ui.centered(Ui.caps(this, t, c.name, 17, t.ink));
             Ui.ellipsize(name, 1);
+            names.add(name);
             TextView n = Ui.centered(Ui.text(this, t, c.apps.size() + (c.apps.size() == 1 ? " app" : " apps"), 14, t.sepia, Theme.regular));
             cell.addView(name, Ui.wide(t.sdp(4))); cell.addView(n, Ui.wide(t.sdp(2)));
             GridLayout.LayoutParams gp = new GridLayout.LayoutParams(); gp.width = cellW; gp.height = ViewGroup.LayoutParams.WRAP_CONTENT;
@@ -411,6 +417,13 @@ public class HomeActivity extends Activity {
             Steady.tap(cell, t, v -> openChapter(idx));
             cell.setContentDescription(c.name + ", " + c.apps.size() + " apps");
             plateViews.add(img);
+        }
+        // every name whole on one line ("READING & TV", not "READING & …"), and all of them the same size
+        float fit = 1f;
+        for (TextView nm : names) { float w = nm.getPaint().measureText(nm.getText().toString()); if (w > 0) fit = Math.min(fit, (cellW - gap * 2) / w); }
+        if (fit < 1f) {
+            float px = Math.max(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 11, getResources().getDisplayMetrics()), (float) Math.floor(names.get(0).getTextSize() * fit * .97f));
+            for (TextView nm : names) nm.setTextSize(TypedValue.COMPLEX_UNIT_PX, px);
         }
         drawPlates(plateW);
     }
@@ -497,6 +510,13 @@ public class HomeActivity extends Activity {
         return r;
     }
 
+    private void liftSeek(View wrap) {
+        homeScroll.postDelayed(() -> {
+            int to = Math.max(0, wrap.getTop() - t.dp(56));
+            if (Math.abs(homeScroll.getScrollY() - to) > t.dp(8)) homeScroll.smoothScrollTo(0, to);
+        }, 150);
+    }
+
     private void renderResults() {
         if (results == null || seek == null) return;
         String q = seek == null ? "" : seek.getText().toString().trim().toLowerCase(Locale.ROOT);
@@ -504,6 +524,7 @@ public class HomeActivity extends Activity {
         grid.setVisibility(seeking ? View.GONE : View.VISIBLE);
         results.setVisibility(seeking ? View.VISIBLE : View.GONE);
         results.removeAllViews();
+        results.setMinimumHeight(seeking ? getResources().getDisplayMetrics().heightPixels : 0);   // room to lift the search line
         if (!seeking) return;
         List<Apps.App> hits = new ArrayList<>();
         for (Apps.App a : apps) if (a.label.toLowerCase(Locale.ROOT).contains(q)) hits.add(a);
@@ -635,8 +656,8 @@ public class HomeActivity extends Activity {
         card.setTag("note");
         Notes.Note n = g.latest();
         card.addView(Ui.caps(this, t, n.app + "  ·  " + NuntiusPage.hhmm(n.when), 13, t.sepia));
-        card.addView(Ui.body(this, t, g.line(), 21), Ui.wide(t.sdp(4)));
-        String d = g.detail();
+        card.addView(Ui.body(this, t, g.cardLine(), 21), Ui.wide(t.sdp(4)));
+        String d = g.cardDetail();
         if (!d.isEmpty()) card.addView(Ui.ellipsize(Ui.text(this, t, d, 18, t.sepia, Theme.regular), 4), Ui.wide(t.sdp(4)));
         TextView open = Ui.button(this, t, "Open", v -> { Notes.open(this, n); for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); closeSheet(); });
         TextView done = Ui.button(this, t, "Done", v -> { for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); putAway(card); });
@@ -679,6 +700,11 @@ public class HomeActivity extends Activity {
     // ------------------------------------------------------------------ time, weather, strip
     private static final String[] MONTHS = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
     private static final String[] DAYS = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+    /** "Tuesday, the 24th of November" */
+    static String longDate() {
+        Calendar d = Calendar.getInstance();
+        return DAYS[d.get(Calendar.DAY_OF_WEEK) - 1] + ", the " + ord(d.get(Calendar.DAY_OF_MONTH)) + " of " + MONTHS[d.get(Calendar.MONTH)];
+    }
     static String ord(int n) { int m = n % 100; return n + ((m >= 11 && m <= 13) ? "th" : (n % 10 == 1 ? "st" : n % 10 == 2 ? "nd" : n % 10 == 3 ? "rd" : "th")); }
 
     private void tickNow() {
@@ -687,7 +713,7 @@ public class HomeActivity extends Activity {
         String hm = h + ":" + String.format(Locale.US, "%02d", d.get(Calendar.MINUTE));
         if (time != null) time.setText(hm);
         if (date != null) date.setText(t.huge() ? DAYS[d.get(Calendar.DAY_OF_WEEK) - 1] + " " + d.get(Calendar.DAY_OF_MONTH) + " " + MONTHS[d.get(Calendar.MONTH)]
-                : DAYS[d.get(Calendar.DAY_OF_WEEK) - 1] + ", the " + ord(d.get(Calendar.DAY_OF_MONTH)) + " of " + MONTHS[d.get(Calendar.MONTH)]);
+                : longDate());
         if (greeting != null) {
             String n = Theme.prefs(this).getString("name", ""); int hh = d.get(Calendar.HOUR_OF_DAY);
             greeting.setVisibility(n.isEmpty() ? View.GONE : View.VISIBLE);
@@ -718,8 +744,13 @@ public class HomeActivity extends Activity {
         LinearLayout now = Ui.row(this); now.setGravity(Gravity.CENTER);
         now.addView(Ui.text(this, t, Math.round(cur.optDouble("temperature_2m")) + "°", 72, t.ink, Theme.regular));
         LinearLayout what = Ui.column(this); what.setPadding(t.sdp(14), 0, 0, 0);
-        what.addView(Ui.body(this, t, Weather.words(cur.optInt("weather_code")), 22));
-        what.addView(Ui.text(this, t, "feels " + Math.round(cur.optDouble("apparent_temperature")) + "° · wind " + Math.round(cur.optDouble("wind_speed_10m")) + " mph", 16, t.sepia, Theme.regular));
+        TextView sky = Ui.body(this, t, Weather.words(cur.optInt("weather_code")), 22);
+        TextView feels = Ui.text(this, t, "feels " + Math.round(cur.optDouble("apparent_temperature")) + "° · wind " + Math.round(cur.optDouble("wind_speed_10m")) + " mph", 16, t.sepia, Theme.regular);
+        what.addView(sky); what.addView(feels);
+        if (t.large()) {   // big text: the temperature, then the words under it (side by side they broke as "over / cast")
+            now.setOrientation(LinearLayout.VERTICAL); what.setPadding(0, 0, 0, 0); what.setGravity(Gravity.CENTER_HORIZONTAL);
+            Ui.centered(sky); Ui.centered(feels);
+        }
         now.addView(what);
         weatherPage.addView(now, Ui.wide(t.sdp(18)));
 

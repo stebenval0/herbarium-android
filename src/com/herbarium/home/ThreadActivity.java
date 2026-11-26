@@ -273,7 +273,7 @@ public class ThreadActivity extends Activity {
         col.removeAllViews();
         boolean care = Care.on(this) && !getIntent().getBooleanExtra("helper", false), group = addresses.size() > 1;
         String name = addresses.isEmpty() ? "" : Texts.names(this, addresses);
-        TextView who = Ui.centered(Ui.text(this, t, name, 28, t.ink, Theme.semi)); who.setMaxLines(3);
+        TextView who = Ui.wholeWords(Ui.centered(Ui.text(this, t, name, 28, t.ink, Theme.semi)), 16); who.setMaxLines(3);
         col.addView(who, Ui.wide());
         TextView back = Ui.button(this, t, "Back", v -> finish());
         boolean canCall = !group && !addresses.isEmpty() && !Sorter.business(addresses.get(0));

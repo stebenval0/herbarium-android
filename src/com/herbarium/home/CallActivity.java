@@ -112,7 +112,7 @@ public class CallActivity extends Activity {
 
         TextView status = Ui.centered(Ui.text(this, t, statusLine(call, st), 20, t.sepia, Theme.regular));
         status.setTag("status");
-        TextView big = Ui.centered(Ui.text(this, t, name, 44, t.ink, Theme.semi));
+        TextView big = Ui.wholeWords(Ui.centered(Ui.text(this, t, name, 44, t.ink, Theme.semi)), 20);
         big.setMaxLines(3);
         col.addView(Ui.centered(Ui.text(this, t, incoming ? "Calling you" : "", 20, t.sage, Theme.regular)));
         col.addView(big, Ui.wide(t.sdp(8)));

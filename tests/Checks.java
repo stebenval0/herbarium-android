@@ -40,6 +40,20 @@ public class Checks {
         same("one reminder", Summary.count(1, "reminder"), "a reminder");
         same("an alert", Summary.count(1, "alert"), "an alert");
         same("several", Summary.count(3, "message"), "three messages");
+
+        // ---- notice cards: the heading names the app, so the line must not repeat it
+        Notes.Note cal = new Notes.Note(); cal.app = "Calendar"; cal.pkg = "cal"; cal.title = "Leave the House"; cal.text = "From yesterday";
+        cal.category = ""; cal.person = "";
+        Summary.Group one = new Summary.Group("Calendar", false); one.notes.add(cal);
+        same("card line is the notice's title", one.cardLine(), "Leave the House");
+        same("card detail is its text", one.cardDetail(), "From yesterday");
+        Notes.Note bare = new Notes.Note(); bare.app = "Clock"; bare.pkg = "clk"; bare.title = "Clock"; bare.text = "Alarm at 7:00";
+        bare.category = ""; bare.person = "";
+        Summary.Group two = new Summary.Group("Clock", false); two.notes.add(bare);
+        same("title that is just the app's name gives way to the text", two.cardLine(), "Alarm at 7:00");
+        same("...and the text isn't shown twice", two.cardDetail(), "");
+        two.notes.add(bare);
+        same("several notices from one app", two.cardLine(), "Two notices");
         same("first name for the call-back button", Missed.first("Ruth Ellis"), "Ruth");
         same("a number stays whole", Missed.first("(225) 555-0100"), "(225) 555-0100");
 

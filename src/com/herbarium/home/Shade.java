@@ -94,11 +94,13 @@ final class Shade {
                 return super.dispatchKeyEvent(e);
             }
         };
-        panel.setBackgroundColor(t.paper); panel.setForceDarkAllowed(false);   // Herbarium keeps its own day and night
+        panel.setForceDarkAllowed(false);   // Herbarium keeps its own day and night
+        // the paper is very slightly see-through, so the shade feels laid over what was there (solid with stronger contrast)
         android.graphics.Bitmap paper = Paper.ready(s, W, H, t);
         android.widget.ImageView bgImg = new android.widget.ImageView(s);
         bgImg.setScaleType(android.widget.ImageView.ScaleType.FIT_XY);
         if (paper != null) bgImg.setImageBitmap(paper); else bgImg.setImageDrawable(Paper.quick(t));
+        bgImg.setAlpha(t.contrast ? 1f : Theme.VEIL);
         panel.addView(bgImg, Ui.fill());
         Steady.Scroll sc = new Steady.Scroll(s, t);
         LinearLayout col = Ui.column(s); col.setPadding(t.dp(22), t.dp(44), t.dp(22), t.dp(40));
@@ -175,8 +177,8 @@ final class Shade {
         bg.setColor(t.night ? 0x332c3870 : 0x66f3ecda); bg.setStroke(t.dp(1), 0x556e5d45); card.setBackground(bg);
         card.setPadding(t.sdp(14), t.sdp(10), t.sdp(14), t.sdp(10));
         card.addView(Ui.caps(s, t, g.latest().app, 13, t.sepia));
-        card.addView(Ui.body(s, t, g.line(), 19), Ui.wide(t.sdp(2)));
-        if (!g.detail().isEmpty()) card.addView(Ui.ellipsize(Ui.text(s, t, g.detail(), 16, t.sepia, Theme.regular), 2), Ui.wide(t.sdp(2)));
+        card.addView(Ui.body(s, t, g.cardLine(), 19), Ui.wide(t.sdp(2)));
+        if (!g.cardDetail().isEmpty()) card.addView(Ui.ellipsize(Ui.text(s, t, g.cardDetail(), 16, t.sepia, Theme.regular), 2), Ui.wide(t.sdp(2)));
         TextView open = Ui.button(s, t, "Open", v -> { hide(); Notes.open(s, g.latest()); for (Notes.Note x : g.notes) Notes.dismiss(s, x.key); });
         TextView done = Ui.button(s, t, "Done", v -> { for (Notes.Note x : g.notes) Notes.dismiss(s, x.key); rebuild(); });
         card.addView(Ui.pair(s, t, open, done), Ui.wide(t.sdp(8)));

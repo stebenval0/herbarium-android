@@ -144,7 +144,7 @@ final class HomePages {
                     col.addView(Ui.centered(Ui.text(a, t, "New messages from people wait here until you reply.", 17, t.sepia, Theme.italic)), Ui.wide(t.sdp(8)));
                 }
                 if (!care && newOthers > 0)
-                    col.addView(Ui.text(a, t, Summary.capital(Summary.count(newOthers, "new code or update")) + " in All messages.", 16, t.sepia, Theme.italic), Ui.wide(t.sdp(16)));
+                    col.addView(Ui.text(a, t, (newOthers == 1 ? "A new code or update" : Summary.capital(Summary.number(newOthers)) + " new codes and updates") + " in All messages.", 16, t.sepia, Theme.italic), Ui.wide(t.sdp(16)));
             });
         });
     }
@@ -167,7 +167,7 @@ final class HomePages {
         g.setColor(t.night ? 0x332c3870 : 0x66f3ecda); g.setStroke(t.dp(v.unread > 0 ? 2 : 1), v.unread > 0 ? t.gold : 0x556e5d45);
         r.setBackground(g);
         LinearLayout top = Ui.row(a);
-        TextView name = Ui.text(a, t, v.name, 21, t.ink, v.unread > 0 ? Theme.semi : Theme.regular); name.setMaxLines(2);
+        TextView name = Ui.wholeWords(Ui.text(a, t, v.name, 21, t.ink, v.unread > 0 ? Theme.semi : Theme.regular), 16); name.setMaxLines(2);
         top.addView(name, Ui.weight());
         LinearLayout.LayoutParams wp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); wp.leftMargin = t.dp(10);
         top.addView(Ui.text(a, t, MessagesActivity.when(v.date), 15, t.sepia, Theme.regular), wp);

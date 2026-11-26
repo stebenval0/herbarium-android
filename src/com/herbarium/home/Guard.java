@@ -29,6 +29,7 @@ public class Guard extends AccessibilityService {
                 if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) Missed.notifyWaiting(Guard.this);
                 if (!Intent.ACTION_SCREEN_ON.equals(i.getAction())) return;
             }
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction()) && recents != null) recents.hide();
             long wait = Intent.ACTION_SCREEN_OFF.equals(i.getAction()) ? 600 : 0;
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> LockActivity.show(Guard.this), wait);
         }
@@ -43,13 +44,49 @@ public class Guard extends AccessibilityService {
 
     static volatile Guard instance;
     Shade shade;
+    Recents recents;
     private long homeCheck;
+
+    private final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+    private String switcherPkg; private long switcherAt;
+    /** Only once Herbarium is the home screen (like the shade), and not yet in Caretaken mode. */
+    private boolean recentsWanted() { return !Care.on(this) && Notes.isHome(this); }
+    private final Runnable settle = () -> this.switcherCheck.run();
+    private static final java.util.concurrent.ExecutorService looking = java.util.concurrent.Executors.newSingleThreadExecutor();
+    /** Reading another window's contents is a call into that window's app, and when the window is Herbarium's own
+     *  that call needs this main thread: so the looking happens on a worker thread, never here (it froze Herbarium). */
+    private final Runnable switcherCheck = () -> {
+        if (recents == null) return;
+        String sw = switcherPkg; boolean wanted = recentsWanted();
+        looking.execute(() -> {
+            boolean on = sw != null && wanted && sw.equals(topApp());
+            main.post(() -> {
+                if (on) recents.show();
+                // a look taken while the switcher was still opening can see the app underneath: don't hide in that moment
+                else if (SystemClock.elapsedRealtime() - switcherAt > 700) recents.hide();
+            });
+        });
+    };
+    /** The package of the top-most ordinary app window (overlays, keyboards and system bars skipped). */
+    private String topApp() {
+        try {
+            for (android.view.accessibility.AccessibilityWindowInfo w : getWindows()) {
+                if (w.getType() != android.view.accessibility.AccessibilityWindowInfo.TYPE_APPLICATION) continue;
+                AccessibilityNodeInfo r = w.getRoot();
+                if (r == null) continue;
+                CharSequence p = r.getPackageName();
+                return p == null ? null : p.toString();
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
 
     static void openShade() { Guard g = instance; if (g != null && g.shade != null) g.shade.show(); }
 
     @Override protected void onServiceConnected() {
         instance = this;
         shade = new Shade(this); shade.refresh();
+        recents = new Recents(this);
         ClaususService.start(this);
         android.content.IntentFilter f = new android.content.IntentFilter(Intent.ACTION_SCREEN_OFF);
         f.addAction(Intent.ACTION_SCREEN_ON); f.addAction(Intent.ACTION_DREAMING_STOPPED); f.addAction(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION);   // the screensaver ends straight into the lock screen
@@ -59,9 +96,19 @@ public class Guard extends AccessibilityService {
             getContentResolver().registerContentObserver(android.provider.CallLog.Calls.CONTENT_URI, true, callLog);
         } catch (Exception ignored) {}   // no call-log permission yet
         Care.apply(this);
+        // Herbarium was just (re)started, by an update say, with the phone locked: put its lock screen back at once,
+        // or Android's own shows until the screen next goes off
+        // (Home first, behind it: an update takes Herbarium's Home off the stack, and unlocking then landed in whatever app was older)
+        main.postDelayed(() -> {
+            android.app.KeyguardManager km = getSystemService(android.app.KeyguardManager.class);
+            if (km == null || !km.isKeyguardLocked() || !Notes.isHome(this) || InCall.current() != null) return;
+            try { startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage(getPackageName())
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION)); } catch (Exception ignored) {}
+            LockActivity.show(this);
+        }, 300);
     }
 
-    @Override public void onDestroy() { try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} instance = null; if (shade != null) shade.destroy(); try { unregisterReceiver(screen); } catch (Exception ignored) {} super.onDestroy(); }
+    @Override public void onDestroy() { try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} instance = null; if (shade != null) shade.destroy(); if (recents != null) recents.hide(); try { unregisterReceiver(screen); } catch (Exception ignored) {} super.onDestroy(); }
 
     @Override public void onAccessibilityEvent(AccessibilityEvent e) {
         if (e == null || e.getPackageName() == null) return;
@@ -69,6 +116,21 @@ public class Guard extends AccessibilityService {
         long now0 = SystemClock.elapsedRealtime();
         if (shade != null && now0 - homeCheck > 20_000) { homeCheck = now0; shade.refresh(); }   // the edge strip follows the settings
         Care.keepRinging(this);                                                                    // (checks at most every 15 s)
+        // Android's app switcher: cover it with Herbarium's own Recent page (and keep track of what was in front)
+        if (e.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && recents != null) {
+            CharSequence cls = e.getClassName();
+            // events can arrive out of order when windows change together, so after any change look at what is really on top
+            // (only needed while the Recent page is up or the switcher has just opened: no looking at other windows otherwise)
+            if (recents.showing() || SystemClock.elapsedRealtime() - switcherAt < 2000) { main.removeCallbacks(switcherCheck); main.postDelayed(switcherCheck, 120); }
+            if (Recents.isSwitcher(cls)) {
+                switcherPkg = pkg; switcherAt = SystemClock.elapsedRealtime(); recents.switcherPkg = pkg;
+                if (recentsWanted()) recents.show();
+                main.removeCallbacks(settle); main.postDelayed(settle, 800);       // and settle it once the switcher has finished opening
+                return;
+            }   // at once, so the switcher never shows
+            if (!pkg.equals(getPackageName()) && isApp(pkg)) recents.saw(pkg);
+            else if (pkg.equals(getPackageName()) && cls != null && cls.toString().endsWith(".HomeActivity")) recents.sawHome();
+        }
         if (pkg.equals(getPackageName())) return;
         // an alarm is ringing and the clock app's own screen came up over Herbarium's: put Herbarium's back in front
         if (AlarmActivity.now != null && pkg.equals(AlarmActivity.now.pkg) && e.getEventType() == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) { AlarmActivity.show(this); return; }

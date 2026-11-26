@@ -32,8 +32,17 @@ public class AccessActivity extends Activity {
     private int scrollY;
     private Steady.Scroll scroll;
 
-    @Override protected void onCreate(Bundle b) { super.onCreate(b); getWindow().setDecorFitsSystemWindows(false); build(); }
+    @Override protected void onCreate(Bundle b) {
+        super.onCreate(b);
+        getWindow().setDecorFitsSystemWindows(false);
+        // paper right up to the top edge, as everywhere else (without this the camera cut-out band shows black)
+        getWindow().getAttributes().layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
+        build();
+    }
     @Override protected void onResume() { super.onResume(); build(); }
+
+    /** "✓ App guard": the tick is held to its first word, so it never ends a line on its own. */
+    private static String mark(boolean ok, String what) { return (ok ? "✓" : "✗") + "\u00a0\u00a0" + what; }
 
     private void rebuild() { scrollY = scroll == null ? 0 : scroll.getScrollY(); build(); }
 
@@ -64,7 +73,7 @@ public class AccessActivity extends Activity {
 
         // ---------------- text size
         col.addView(Ui.heading(this, t, "Text size"));
-        TextView sample = Ui.body(this, t, "Sunday, the 22nd of November. Everything on the phone grows or shrinks together.", 20);
+        TextView sample = Ui.body(this, t, HomeActivity.longDate() + ". Everything on the phone grows or shrinks together.", 20);
         col.addView(sample, Ui.wide(t.sdp(6)));
         LinearLayout sizes = Ui.row(this);
         TextView smaller = Steady.repeatable(Ui.button(this, t, "A  smaller", v -> setScale(-.1f)));   // tapped several times on purpose
@@ -144,10 +153,12 @@ public class AccessActivity extends Activity {
         for (String[] o : new String[][]{{"auto", "With the sun"}, {"day", "Always day"}, {"night", "Always night"}}) {
             TextView b = look.equals(o[0]) ? Ui.primary(this, t, o[1], v -> { p.edit().putString("look", o[0]).apply(); rebuild(); })
                                            : Ui.button(this, t, o[1], v -> { p.edit().putString("look", o[0]).apply(); rebuild(); });
+            if (t.large()) { looks.addView(b, Ui.wide(looks.getChildCount() == 0 ? 0 : t.sdp(8))); continue; }   // one under another, words whole
             b.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(13));
             LinearLayout.LayoutParams w = Ui.weight(); w.setMargins(t.dp(3), 0, t.dp(3), 0);
             looks.addView(b, w);
         }
+        if (t.large()) looks.setOrientation(LinearLayout.VERTICAL);
         col.addView(looks, Ui.wide(t.sdp(8)));
 
         // ---------------- notifications
@@ -185,7 +196,7 @@ public class AccessActivity extends Activity {
         col.addView(Ui.button(this, t, "Paste the invitation", v -> { if (!InviteActivity.fromClipboard(this)) inviteMsg.setText("There's no invitation copied yet. Copy it from the keeper's message first."); }), Ui.wide(t.sdp(10)));
         col.addView(inviteMsg, Ui.wide(t.sdp(6)));
         boolean guardOn = State.guardOn(this), adminOn = State.adminOn(this), vpnOk = android.net.VpnService.prepare(this) == null;
-        col.addView(Ui.text(this, t, (guardOn ? "✓" : "✗") + "  App guard     " + (adminOn ? "✓" : "✗") + "  Can't be uninstalled     " + (vpnOk ? "✓" : "✗") + "  Website filter", 16, guardOn && adminOn && vpnOk ? t.sage : t.ochre, Theme.regular), Ui.wide(t.sdp(8)));
+        col.addView(Ui.text(this, t, String.join(t.large() ? "\n" : "     ", mark(guardOn, "App guard"), mark(adminOn, "Can't be uninstalled"), mark(vpnOk, "Website filter")), 16, guardOn && adminOn && vpnOk ? t.sage : t.ochre, Theme.regular), Ui.wide(t.sdp(8)));
 
         // ---------------- calls
         col.addView(Ui.heading(this, t, "Calls"));
@@ -220,8 +231,8 @@ public class AccessActivity extends Activity {
 
         LinearLayout add = card();
         add.addView(Ui.caps(this, t, "Add a number", 15, t.sage));
-        EditText name = field("Who is it? (e.g. Pharmacy)", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
-        EditText number = field("Their number", InputType.TYPE_CLASS_PHONE);
+        EditText name = field(t.large() ? "Name" : "Who is it? (e.g. Pharmacy)", InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_WORDS);
+        EditText number = field(t.large() ? "Number" : "Their number", InputType.TYPE_CLASS_PHONE);
         add.addView(name, Ui.wide(t.sdp(8))); add.addView(number, Ui.wide(t.sdp(8)));
         add.addView(Ui.primary(this, t, "Add to the list", v -> {
             if (Calls.norm(number.getText().toString()).length() < 3) { number.setError("Type the phone number"); return; }
@@ -237,7 +248,8 @@ public class AccessActivity extends Activity {
         for (int i = 0; i < dec.length() && i < 12; i++) {
             JSONObject o = dec.optJSONObject(i); String num = o.optString("number");
             boolean hidden = Calls.norm(num).isEmpty();
-            col.addView(personRow(num, df.format(new Date(o.optLong("at"))), hidden ? null : "Allow",
+            String f = hidden ? null : android.telephony.PhoneNumberUtils.formatNumber(num, "US");
+            col.addView(personRow(hidden ? "A hidden number" : f != null ? f : num, df.format(new Date(o.optLong("at"))), hidden ? null : "Allow",
                     v -> { Calls.allow(this, "", num); rebuild(); }), Ui.wide(t.sdp(6)));
         }
 

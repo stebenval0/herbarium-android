@@ -18,6 +18,8 @@ final class Theme {
     final float scale;          // the person's text size: 1.0 = normal, up to 3.0
     final boolean steady;       // steadier tapping (on by default)
     final boolean contrast;     // stronger contrast
+    /** How solid the shade's paper is: a little of what's underneath shows through. */
+    static final float VEIL = .92f;
     private final float density;
     static Typeface regular, italic, semi, bold;
 

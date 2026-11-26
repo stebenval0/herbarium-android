@@ -102,10 +102,23 @@ public class Notes extends NotificationListenerService {
         Notes s = instance; if (s != null) try { s.cancelAllNotifications(); } catch (Exception ignored) {}
     }
 
+    /** Fire a notification's PendingIntent so that it may open an app. Since Android 14 a sender targeting 34
+     *  must allow that explicitly, or the launch is silently blocked (send() still "succeeds"). */
+    static boolean send(Context c, PendingIntent pi) {
+        if (pi == null) return false;
+        try {
+            android.app.ActivityOptions o = android.app.ActivityOptions.makeBasic();
+            if (android.os.Build.VERSION.SDK_INT >= 34)
+                o.setPendingIntentBackgroundActivityStartMode(android.app.ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+            pi.send(c, 0, null, null, null, null, o.toBundle());
+            return true;
+        } catch (Exception e) { return false; }
+    }
+
     /** Open what a notification points to (or just its app, if Herbarium was restarted since). */
     static void open(Context c, Note n) {
         PendingIntent pi = OPEN.get(n.key);
-        try { if (pi != null) { pi.send(); dismiss(c, n.key); return; } } catch (Exception ignored) {}
+        if (send(c, pi)) { dismiss(c, n.key); return; }
         Intent i = c.getPackageManager().getLaunchIntentForPackage(n.pkg);
         if (i != null) c.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         dismiss(c, n.key);
