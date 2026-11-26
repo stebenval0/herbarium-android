@@ -148,6 +148,12 @@ public class LockActivity extends Activity {
         }
         if (w.size() > 2) calls.addView(Ui.centered(Ui.text(this, th, "and " + Summary.count(w.size() - 2, "other call") + " to return", 18, th.sepia, Theme.italic)), Ui.wide(th.sdp(10)));
     }
+    /** Unlocked some other way (fingerprint, face): step aside at once, not at the next tick. */
+    private final android.content.BroadcastReceiver present = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(android.content.Context c, android.content.Intent i) { if (!getIntent().getBooleanExtra("preview", false)) finish(); }
+    };
+    @Override protected void onStart() { super.onStart(); try { registerReceiver(present, new android.content.IntentFilter(android.content.Intent.ACTION_USER_PRESENT)); } catch (Exception ignored) {} }
+    @Override protected void onStop() { try { unregisterReceiver(present); } catch (Exception ignored) {} super.onStop(); }
     @Override protected void onPause() { h.removeCallbacks(tick); try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} super.onPause(); }
     @Override protected void onDestroy() { if (tts != null) tts.shutdown(); super.onDestroy(); }
     @Override public void onBackPressed() { /* stays until "Open" */ }
