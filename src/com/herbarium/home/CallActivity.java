@@ -134,6 +134,16 @@ public class CallActivity extends Activity {
             return;
         }
 
+        if (st == Call.STATE_SELECT_PHONE_ACCOUNT) {      // two SIMs and "ask every time": the person picks one here
+            java.util.List<android.telecom.PhoneAccountHandle> sims = sims(call);
+            android.telecom.TelecomManager tm = getSystemService(android.telecom.TelecomManager.class);
+            for (android.telecom.PhoneAccountHandle h : sims) {
+                CharSequence label = null;
+                try { label = tm.getPhoneAccount(h).getLabel(); } catch (Exception ignored) {}
+                col.addView(Ui.primary(this, t, "Call with " + (label == null ? "this SIM" : label), v -> call.phoneAccountSelected(h, false)), Ui.wide(t.sdp(10)));
+            }
+        }
+        if (st == Call.STATE_HOLDING) col.addView(Ui.primary(this, t, "Take off hold", v -> call.unhold()), Ui.wide(t.sdp(10)));
         if (keypad) col.addView(keypadView(call), Ui.wide(t.sdp(8)));
         else {
             TextView speaker = toggle("Speaker", spk, v -> InCall.speakerOn(!InCall.speaker()));
@@ -149,6 +159,16 @@ public class CallActivity extends Activity {
         GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.sdp(20)); g.setColor(t.night ? 0xffc96a55 : 0xff9c3b2e);
         end.setBackground(g); end.setTextColor(0xfff6f1e2);
         col.addView(end, Ui.wide(t.sdp(20)));
+    }
+
+    @SuppressWarnings("deprecation")
+    private static java.util.List<android.telecom.PhoneAccountHandle> sims(Call call) {
+        for (android.os.Bundle b : new android.os.Bundle[]{call.getDetails().getIntentExtras(), call.getDetails().getExtras()}) {
+            if (b == null) continue;
+            java.util.ArrayList<android.telecom.PhoneAccountHandle> l = b.getParcelableArrayList(Call.AVAILABLE_PHONE_ACCOUNTS);
+            if (l != null && !l.isEmpty()) return l;
+        }
+        return new java.util.ArrayList<>();
     }
 
     private float grow() { return 1 + (t.scale - 1) * .35f; }
