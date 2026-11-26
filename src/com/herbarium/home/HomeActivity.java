@@ -209,7 +209,7 @@ public class HomeActivity extends Activity {
         deck.addPage(csc); CALLS = at++;
         homeScroll = new Steady.Scroll(this, t);
         // Caretaken: Home is seen whole, at any text size, without scrolling
-        if (Care.on(this)) homeScroll.addView(new Ui.Fit(this, buildHome(), homeScroll, .9f, t.dp(104)), Ui.wide());
+        if (Care.on(this)) homeScroll.addView(new Ui.Fit(this, buildHome(), homeScroll, .85f, t.large() ? 0 : t.dp(104)), Ui.wide());
         else homeScroll.addView(buildHome(), Ui.wide());
         deck.addPage(homeScroll); HOME = at++;
         messagesPage = Ui.column(this); messagesPage.setPadding(t.dp(20), t.dp(52), t.dp(20), t.dp(120));
@@ -225,6 +225,7 @@ public class HomeActivity extends Activity {
 
         root.addView(buildStrip(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, t.dp(40), Gravity.TOP));
         root.addView(buildTabs(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+        if (careMode && t.large()) tabRow.setVisibility(View.GONE);      // big Caretaken Home has its own buttons for every page
 
         // during a call, a way back to it (pressing Home leaves the call screen behind)
         callBar = Ui.primary(this, t, "Back to the call", v -> CallActivity.bringBack(this));
@@ -341,6 +342,7 @@ public class HomeActivity extends Activity {
             LinearLayout.LayoutParams dl = Ui.weight(); dl.leftMargin = t.dp(14);
             head.addView(date, dl);
             col.addView(head, Ui.wide());
+            col.addView(Ui.centered(Ui.text(this, t, "✦  ✦  ✦", 12, t.gold, Theme.regular)), Ui.wide(t.dp(2)));
         } else {
             col.addView(time, Ui.wide(t.sdp(2)));
             if (!care) col.addView(greeting, Ui.wide(t.sdp(2)));
@@ -349,6 +351,7 @@ public class HomeActivity extends Activity {
         if (!(care && t.large())) col.addView(weatherLine, Ui.wide(t.sdp(care ? 4 : 8)));   // Caretaken at big sizes: the calls come before the weather
         if (!care) col.addView(season, Ui.wide(t.sdp(4)));
         summaryCard = Ui.column(this);
+        if (care && t.large()) summaryCard.setVisibility(View.GONE);
         LinearLayout.LayoutParams scp = Ui.wide(care && t.large() ? t.dp(8) : t.sdp(16)); scp.leftMargin = scp.rightMargin = t.dp(22);
         col.addView(summaryCard, scp);
 
@@ -368,7 +371,7 @@ public class HomeActivity extends Activity {
                     ui.removeCallbacks(openSettings); access.setText("For helpers: hold for settings"); }
                 return true;
             });
-            col.addView(access, Ui.wide(t.sdp(14)));
+            col.addView(access, Ui.wide(t.large() ? t.dp(4) : t.sdp(14)));
             return col;
         }
 
@@ -650,11 +653,45 @@ public class HomeActivity extends Activity {
         }, 60);
     }
 
+    /** Texts from people that are waiting for him (unanswered, not put away, not older than a week unless unread). */
+    private List<Texts.Conv> waitingTexts() {
+        List<Texts.Conv> out = new ArrayList<>();
+        if (!Texts.isDefault(this)) return out;
+        java.util.Set<String> mine = MmsWork.myNumbers(this);
+        try {
+            for (Texts.Conv v : Texts.conversations(this)) {
+                if (v.pile != Sorter.PEOPLE || v.answered || HomePages.putAway(this, v)) continue;
+                if (!v.group && !v.addresses.isEmpty() && mine.contains(Sorter.key(v.addresses.get(0)))) continue;
+                if (System.currentTimeMillis() - v.date > 7 * 86_400_000L && v.unread == 0) continue;
+                out.add(v);
+                if (out.size() >= 8) break;
+            }
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    /** As many letters as fit on the screen whole; the rest are counted underneath. */
+    private void fitLetters(LinearLayout box) {
+        box.post(() -> {
+            if (careBox != box || homeScroll == null || homeScroll.getChildCount() == 0) return;
+            View content = homeScroll.getChildAt(0);
+            if (content.getHeight() > homeScroll.getHeight() && CarePages.dropLetter(box)) fitLetters(box);
+        });
+    }
+
     private void renderCare() {
         if (careBox != null) {
             final LinearLayout box = careBox;
             bg.execute(() -> {          // the call log and contacts are read off the main thread (a cold provider can take seconds)
                 List<Missed.Call> w = Missed.waiting(this); List<CarePages.Person> f = CarePages.starred(this);
+                final List<Texts.Conv> letters = t.large() ? waitingTexts() : new ArrayList<>();
+                if (t.large()) {
+                    ui.post(() -> { if (careBox == box && !isDestroyed()) {
+                        CarePages.fillFeed(this, t, box, this::renderCare, () -> deck.go(CALLS, true), w, f, letters, () -> deck.go(MESSAGES, true));
+                        fitLetters(box);
+                    } });
+                    return;
+                }
                 ui.post(() -> { if (careBox == box && !isDestroyed()) { CarePages.fill(this, t, box, this::renderCare, () -> deck.go(CALLS, true), w, f); careItems = w.size() * 10 + f.size(); careDrawn = true; checkCareFit(); } });
             });
         }

@@ -9,6 +9,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.provider.ContactsContract;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -98,52 +99,147 @@ final class CarePages {
     }
 
     /**
-     * Caretaken Home at big text sizes: everything on one screen, nothing shrunk. Big buttons, one or two words each:
-     *   the newest call to return (name, and Call back beside it),
-     *   favourites two to a row (two of them when a call is waiting, four otherwise), then "Everyone",
-     *   Phone | Messages, and Emergency call. (Voicemail is on the Phone page.)
+     * Caretaken Home at big text sizes: his calls and texts, as letters on the desk. Each one is a card he can act on
+     * (Call back / Reply, and Done), newest first, as many as fit on the screen (the rest are counted, and wait on the
+     * Calls and Messages pages). Under them, always: Phone | Texts, People | Emergency. Nothing to scroll, nothing shrunk.
      */
     static void fillLarge(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav) {
+        fillFeed(a, t, box, refresh, everyone, waiting, fav, new ArrayList<>(), null);
+    }
+
+    static void fillFeed(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav,
+                         List<Texts.Conv> texts, Runnable toTexts) {
         box.removeAllViews();
-        float size = 20;                                   // every button on the page the same size (t.btn: twice the normal at 300%)
+        int warn = t.night ? 0xffe8907a : 0xff9c3b2e;
         if (android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1)
-            box.addView(big(Ui.text(a, t, "Airplane mode is on: no calls.", 16, t.night ? 0xffe8907a : 0xff9c3b2e, Theme.semi), t, 16), Ui.wide(t.dp(6)));
+            box.addView(big(Ui.centered(Ui.text(a, t, "Airplane mode is on: no calls.", 15, warn, Theme.semi)), t, 15), Ui.wide(t.dp(4)));
         if (Guard.instance == null)
-            box.addView(big(Ui.text(a, t, "Ask a helper: protection is off.", 16, t.night ? 0xffe8907a : 0xff9c3b2e, Theme.semi), t, 16), Ui.wide(t.dp(6)));
-        if (!waiting.isEmpty()) {
-            Missed.Call m = waiting.get(0);
-            LinearLayout card = Ui.row(a); card.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            card.setPadding(t.dp(14), t.dp(10), t.dp(10), t.dp(10));
-            GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.dp(18));
-            g.setColor(t.night ? 0x552c3870 : 0xccf3ecda); g.setStroke(t.dp(2), t.night ? t.gold : 0xff9a7428);
-            card.setBackground(g);
-            LinearLayout who = Ui.column(a);
-            who.addView(Ui.wholeWords(big(Ui.text(a, t, Missed.first(m.name), size, t.ink, Theme.semi), t, size), 14));
-            String more = waiting.size() > 1 ? " · +" + (waiting.size() - 1) : "";
-            who.addView(big(Ui.text(a, t, "called" + more, 14, t.sepia, Theme.regular), t, 14));
-            LinearLayout.LayoutParams wl = Ui.weight(); wl.rightMargin = t.dp(8);
-            card.addView(who, wl);
-            TextView call = big(Ui.primary(a, t, "Call back", v -> Missed.callBack(a, m.number)), t, size);
-            call.setContentDescription("Call " + m.name + " back"); Ui.wholeWords(call, 14);
-            card.addView(call, Ui.weight());
-            box.addView(card, Ui.wide(t.dp(6)));
+            box.addView(big(Ui.centered(Ui.text(a, t, "Ask a helper: protection is off.", 15, warn, Theme.semi)), t, 15), Ui.wide(t.dp(4)));
+
+        // the letters: calls to return and texts waiting for him, newest first
+        List<Object> feed = new ArrayList<>();
+        int ci = 0, ti = 0;
+        while (ci < waiting.size() || ti < texts.size()) {
+            boolean call = ti >= texts.size() || (ci < waiting.size() && waiting.get(ci).at >= texts.get(ti).date);
+            feed.add(call ? waiting.get(ci++) : texts.get(ti++));
         }
-        int room = waiting.isEmpty() ? 5 : 3;              // favourite buttons, before "Everyone" (rows of two)
-        List<View> people = new ArrayList<>();
-        for (int i = 0; i < fav.size() && i < room; i++) people.add(nameButton(a, t, fav.get(i), size));
-        TextView all = big(Ui.button(a, t, "Everyone", v -> everyone.run()), t, size);
-        all.setContentDescription("Everyone you know, with a Call button each"); Ui.wholeWords(all, 14);
-        people.add(all);
-        for (int i = 0; i < people.size(); i += 2)
-            box.addView(Ui.sideBySide(a, t, people.get(i), i + 1 < people.size() ? people.get(i + 1) : new View(a)), Ui.wide(t.dp(8)));
+        for (Object o : feed) {
+            View card = o instanceof Missed.Call ? callLetter(a, t, (Missed.Call) o, refresh) : textLetter(a, t, (Texts.Conv) o, refresh);
+            card.setTag("letter");
+            box.addView(card, Ui.wide(t.dp(10)));
+        }
+        TextView more = big(Ui.centered(Ui.text(a, t, "", 14, t.sepia, Theme.italic)), t, 14);
+        more.setTag("more"); more.setVisibility(View.GONE);
+        Steady.tap(more, t, v -> { if (toTexts != null) toTexts.run(); });
+        box.addView(more, Ui.wide(t.dp(4)));
+
+        if (feed.isEmpty()) {          // nothing waiting: a quiet line, and the people he calls most
+            box.addView(big(Ui.centered(Ui.text(a, t, "Nothing new.", 19, t.ink, Theme.regular)), t, 19), Ui.wide(t.dp(10)));
+            List<View> people = new ArrayList<>();
+            for (int i = 0; i < fav.size() && i < 4; i++) people.add(nameButton(a, t, fav.get(i), 20));
+            for (int i = 0; i < people.size(); i += 2)
+                box.addView(Ui.sideBySide(a, t, people.get(i), i + 1 < people.size() ? people.get(i + 1) : new View(a)), Ui.wide(t.dp(8)));
+        }
+
+        // the way to everything else, always in the same place
+        View rule = Ui.rule(a, t); LinearLayout.LayoutParams rp = Ui.lp(ViewGroup.LayoutParams.MATCH_PARENT, t.dp(1)); rp.setMargins(t.dp(30), t.dp(14), t.dp(30), t.dp(4));
+        box.addView(rule, rp);
+        float size = 18;
         TextView phone = big(Ui.button(a, t, "Phone", v -> open(a, Apps.dialer(a), new Intent(Intent.ACTION_DIAL))), t, size);
         TextView msgs = big(Ui.button(a, t, "Texts", v -> open(a, Apps.messages(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING))), t, size);
         msgs.setContentDescription("Messages");
+        TextView all = big(Ui.button(a, t, "People", v -> everyone.run()), t, size);
+        all.setContentDescription("Everyone you know, with a Call button each");
+        TextView sos = big(Ui.button(a, t, "Emergency", v -> DialActivity.emergency(a)), t, size);
+        sos.setTextColor(warn); sos.setContentDescription("Emergency call: opens the number pad with the emergency number typed in");
+        for (TextView b : new TextView[]{phone, msgs, all, sos}) Ui.wholeWords(b, 14);
         box.addView(Ui.sideBySide(a, t, phone, msgs), Ui.wide(t.dp(8)));
-        TextView sos = big(Ui.button(a, t, "Emergency " + DialActivity.emergencyNumber(a), v -> DialActivity.emergency(a)), t, size);
-        sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e); Ui.wholeWords(sos, 14);
-        sos.setContentDescription("Emergency call: opens the number pad with the emergency number typed in");
-        box.addView(sos, Ui.wide(t.dp(8)));
+        box.addView(Ui.sideBySide(a, t, all, sos), Ui.wide(t.dp(8)));
+    }
+
+    /** Too tall for the screen: the last letter steps off (it's counted in "and N more"). Returns false when none is left to drop. */
+    static boolean dropLetter(LinearLayout box) {
+        int last = -1, letters = 0; TextView more = null;
+        for (int i = 0; i < box.getChildCount(); i++) {
+            View v = box.getChildAt(i);
+            if ("letter".equals(v.getTag())) { last = i; letters++; }
+            if ("more".equals(v.getTag())) more = (TextView) v;
+        }
+        if (letters <= 1 || more == null) return false;
+        box.removeViewAt(last);
+        int hidden = (more.getTag(R_HIDDEN) instanceof Integer ? (Integer) more.getTag(R_HIDDEN) : 0) + 1;
+        more.setTag(R_HIDDEN, hidden);
+        more.setText("and " + Summary.number(hidden) + " more waiting");
+        more.setVisibility(View.VISIBLE);
+        return true;
+    }
+    private static final int R_HIDDEN = 0x7f0f0001;
+
+    /** "5:36 PM" today, "Yesterday", else the day ("Monday"). */
+    static String shortWhen(long at) {
+        Calendar now = Calendar.getInstance(), then = Calendar.getInstance(); then.setTimeInMillis(at);
+        int days = (now.get(Calendar.YEAR) - then.get(Calendar.YEAR)) * 366 + now.get(Calendar.DAY_OF_YEAR) - then.get(Calendar.DAY_OF_YEAR);
+        if (days <= 0) return DateFormat.getTimeInstance(DateFormat.SHORT).format(new Date(at));
+        if (days == 1) return "Yesterday";
+        return new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault()).format(new Date(at));
+    }
+
+    /** A letter's paper: the page's own colour, a gold hairline, soft corners. */
+    private static LinearLayout letter(Activity a, Theme t, boolean urgent) {
+        LinearLayout card = Ui.column(a);
+        card.setPadding(t.dp(16), t.dp(10), t.dp(12), t.dp(12));
+        GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.dp(18));
+        g.setColor(t.night ? 0x662c3870 : 0xccf3ecda); g.setStroke(t.dp(urgent ? 2 : 1), urgent ? (t.night ? t.gold : 0xff9a7428) : (t.night ? 0x99b8913e : 0x889a7428));
+        card.setBackground(g);
+        return card;
+    }
+
+    private static View callLetter(Activity a, Theme t, Missed.Call m, Runnable refresh) {
+        LinearLayout card = letter(a, t, true);
+        card.addView(big(Ui.caps(a, t, (m.times > 1 ? m.times + " calls" : "A call") + " · " + shortWhen(m.at), 11, t.sage), t, 11));
+        card.addView(oneLine(big(Ui.text(a, t, m.name, 21, t.ink, Theme.semi), t, 21), t), Ui.wide(t.dp(2)));
+        TextView call = big(Ui.primary(a, t, "Call back", v -> Missed.callBack(a, m.number)), t, 18);
+        call.setContentDescription("Call " + m.name + " back");
+        TextView done = big(Ui.button(a, t, "Done", v -> { Missed.aside(a, m.number); refresh.run(); }), t, 18);
+        done.setContentDescription("Done with " + m.name + "'s call");
+        card.addView(twoToOne(a, t, call, done), Ui.wide(t.dp(8)));
+        return card;
+    }
+
+    private static View textLetter(Activity a, Theme t, Texts.Conv v, Runnable refresh) {
+        LinearLayout card = letter(a, t, v.unread > 0);
+        card.addView(big(Ui.caps(a, t, (v.unread > 1 ? v.unread + " letters" : "A letter") + " · " + shortWhen(v.date), 11, t.sage), t, 11));
+        card.addView(oneLine(big(Ui.text(a, t, v.name, 21, t.ink, Theme.semi), t, 21), t), Ui.wide(t.dp(2)));
+        TextView said = big(Ui.text(a, t, Sorter.withoutLinks(v.snippet == null ? "" : v.snippet), 17, t.ink, Theme.regular), t, 17);
+        said.setMaxLines(2); said.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        card.addView(said, Ui.wide(t.dp(2)));
+        Runnable open = () -> a.startActivity(new Intent(a, ThreadActivity.class).putExtra("thread", v.thread).putExtra("to", v.addresses.toArray(new String[0])));
+        Steady.tap(card, t, x -> open.run());
+        card.setContentDescription("Letter from " + v.name + ": " + v.snippet + ". Tap to read it all.");
+        TextView reply = big(Ui.primary(a, t, "Reply", x -> a.startActivity(new Intent(a, ThreadActivity.class).putExtra("thread", v.thread)
+                .putExtra("to", v.addresses.toArray(new String[0])).putExtra("type", true))), t, 18);
+        reply.setContentDescription("Reply to " + v.name);
+        TextView done = big(Ui.button(a, t, "Done", x -> { HomePages.putAway(a, v.thread, v.date); refresh.run(); }), t, 18);
+        done.setContentDescription("Done with " + v.name + "'s letter, no reply needed");
+        card.addView(twoToOne(a, t, reply, done), Ui.wide(t.dp(8)));
+        return card;
+    }
+
+    /** A name on one line: a long one comes down a little in size rather than take a second line. */
+    private static TextView oneLine(TextView v, Theme t) {
+        v.setMaxLines(1);
+        v.setAutoSizeTextTypeUniformWithConfiguration(Math.round(t.btn(13)), Math.round(t.btn(21)), 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+        return v;
+    }
+
+    /** The main action wide, the other narrow, side by side. */
+    private static LinearLayout twoToOne(Activity a, Theme t, View main, View other) {
+        LinearLayout r = Ui.row(a);
+        LinearLayout.LayoutParams m = Ui.weight(); m.weight = 1.6f; m.rightMargin = t.dp(8);
+        r.addView(main, m); r.addView(other, Ui.weight());
+        if (other instanceof TextView) Ui.wholeWords((TextView) other, 12);
+        if (main instanceof TextView) Ui.wholeWords((TextView) main, 12);
+        return r;
     }
 
     /** Text and button size for the big Caretaken Home: the button scale (t.btn), tight padding, never taller than needed. */

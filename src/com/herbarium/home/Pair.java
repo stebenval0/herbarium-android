@@ -14,6 +14,15 @@ public class Pair extends BroadcastReceiver {
     @Override public void onReceive(Context c, Intent i) {
         if (i.getBooleanExtra("shade", false)) { Guard.openShade(); setResultData("shade"); return; }   // for testing over adb
         if (i.hasExtra("ear")) { Theme.prefs(c).edit().putString("ear", i.getStringExtra("ear")).apply(); setResultData("ear"); return; }   // "own" or "auto"
+        if (i.hasExtra("smsIn")) {          // testing, nothing sent: "number|words" filed as a text that just arrived (adb only)
+            String[] f = i.getStringExtra("smsIn").split("\\|", 2);
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put("address", f[0]); v.put("body", f.length > 1 ? f[1] : ""); v.put("date", System.currentTimeMillis()); v.put("read", 0); v.put("seen", 0); v.put("type", 1);
+            android.net.Uri u = null;
+            try { u = c.getContentResolver().insert(android.provider.Telephony.Sms.Inbox.CONTENT_URI, v); } catch (Exception e) { setResultData("smsIn failed: " + e); return; }
+            Texts.changed(c);
+            setResultData("smsIn " + u); return;
+        }
         if (i.hasExtra("smsTest")) {        // testing: "number|words", sent `smsTimes` times through the same path as Send
             String[] f = i.getStringExtra("smsTest").split("\\|", 2);
             int times = i.getIntExtra("smsTimes", 1);
