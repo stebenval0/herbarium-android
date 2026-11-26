@@ -89,7 +89,7 @@ public class HomeActivity extends Activity {
     private final BroadcastReceiver packages = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { loadApps(); } };
     private final BroadcastReceiver clausus = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { loadApps(); updateStrip(); renderSummary(); } };
     private final BroadcastReceiver notes = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { renderSummary(); } };
-    private final BroadcastReceiver missed = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { renderCare(); renderPages(); } };
+    private final BroadcastReceiver missed = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { renderCare(); renderPages(); renderSummary(); } };
     private final BroadcastReceiver texts = new BroadcastReceiver() { @Override public void onReceive(Context c, Intent i) { if (messagesPage != null) HomePages.fillMessages(HomeActivity.this, t, messagesPage, bg, ui); } };
 
     @Override protected void onCreate(Bundle b) {
@@ -138,7 +138,7 @@ public class HomeActivity extends Activity {
 
     /** Caretaken mode: a missed call or a call back changes Home at once. */
     private final android.database.ContentObserver callLog = new android.database.ContentObserver(new android.os.Handler(android.os.Looper.getMainLooper())) {
-        @Override public void onChange(boolean self) { renderCare(); if (callsPage != null) HomePages.fillCalls(HomeActivity.this, t, callsPage, bg, ui); bg.execute(() -> Missed.notifyWaiting(HomeActivity.this)); }
+        @Override public void onChange(boolean self) { renderCare(); renderSummary(); if (callsPage != null) HomePages.fillCalls(HomeActivity.this, t, callsPage, bg, ui); bg.execute(() -> Missed.notifyWaiting(HomeActivity.this)); }
     };
 
     /** Pressing Home while already home: close whatever is open and go back to the top. */
@@ -589,9 +589,16 @@ public class HomeActivity extends Activity {
 
     private void renderSummary() {
         if (summaryCard == null) return;
+        if (!Notes.enabled(this)) { summaryCard.removeAllViews(); return; }   // set up from Accessibility
+        final LinearLayout card = summaryCard;
+        bg.execute(() -> {           // reads the call log and contacts: never on the main thread
+            Summary s = Summary.of(this);
+            ui.post(() -> { if (summaryCard == card && !isDestroyed()) showSummary(s); });
+        });
+    }
+
+    private void showSummary(Summary s) {
         summaryCard.removeAllViews();
-        if (!Notes.enabled(this)) return;   // set up from Accessibility
-        Summary s = Summary.of(this);
         TextView h = Ui.text(this, t, s.styled(t), 20, t.ink, Theme.regular);
         if (s.first.isEmpty() && s.quieter.isEmpty()) Ui.centered(h);
         summaryCard.addView(h, Ui.wide());

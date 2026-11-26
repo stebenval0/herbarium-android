@@ -159,7 +159,10 @@ public class LockActivity extends Activity {
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
         date.setText(days[d.get(Calendar.DAY_OF_WEEK) - 1] + ", the " + HomeActivity.ord(d.get(Calendar.DAY_OF_MONTH)) + " of " + months[d.get(Calendar.MONTH)]);
-        if (Notes.enabled(this)) { Summary sm = Summary.of(this); headline.setText(sm.styled(th)); headline.setGravity(sm.first.isEmpty() && sm.quieter.isEmpty() ? android.view.Gravity.CENTER_HORIZONTAL : android.view.Gravity.START); } else headline.setText("");
+        if (Notes.enabled(this)) new Thread(() -> {       // reads the call log: off the main thread
+            Summary sm = Summary.of(this);
+            h.post(() -> { headline.setText(sm.styled(th)); headline.setGravity(sm.first.isEmpty() && sm.quieter.isEmpty() ? android.view.Gravity.CENTER_HORIZONTAL : android.view.Gravity.START); });
+        }).start(); else headline.setText("");
         KeyguardManager km = getSystemService(KeyguardManager.class);
         if (km != null && !km.isKeyguardLocked() && !getIntent().getBooleanExtra("preview", false)) finish();     // unlocked some other way (fingerprint, say)
     }
