@@ -61,7 +61,7 @@ public class Dream extends DreamService {
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
         date.setText(days[d.get(Calendar.DAY_OF_WEEK) - 1] + ", the " + HomeActivity.ord(d.get(Calendar.DAY_OF_MONTH)) + " of " + months[d.get(Calendar.MONTH)]);
-        try { line.setText(Notes.enabled(this) ? Summary.of(this).headline : Weather.line(this)); } catch (Exception e) { line.setText(""); }
+        try { line.setText(Notes.enabled(this) ? Summary.of(this).oneLine() : Weather.line(this)); } catch (Exception e) { line.setText(""); }
         // drift: a slow figure of eight, about a thumb's width, so no pixel stays lit in one place
         step++;
         float dx = (float) Math.sin(step * .37) * getResources().getDisplayMetrics().density * 18;

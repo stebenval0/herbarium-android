@@ -110,8 +110,15 @@ public class HomeActivity extends Activity {
 
     @Override protected void onDestroy() { unregisterReceiver(power); unregisterReceiver(packages); unregisterReceiver(clausus); unregisterReceiver(notes); unregisterReceiver(missed); unregisterReceiver(texts); if (tts != null) tts.shutdown(); bg.shutdown(); super.onDestroy(); }
 
+    private long stoppedAt;
+    @Override protected void onStop() { stoppedAt = android.os.SystemClock.elapsedRealtime(); super.onStop(); }
     @Override protected void onResume() {
         super.onResume();
+        // back after more than a minute away (the phone was locked, say): Home, at the top
+        if (stoppedAt > 0 && android.os.SystemClock.elapsedRealtime() - stoppedAt > 60_000 && deck != null && sheet.getVisibility() != View.VISIBLE) {
+            deck.go(HOME, false); if (homeScroll != null) homeScroll.scrollTo(0, 0);
+        }
+        stoppedAt = 0;
         if (SetupActivity.needed(this)) startActivity(new Intent(this, SetupActivity.class));   // [onboarding] an unfinished setup comes back to the front
         if (!themeKey.equals(key(Theme.get(this)))) build();
         hideBars();
@@ -253,6 +260,7 @@ public class HomeActivity extends Activity {
             tabs[k] = tab;
         }
         tabHome = tabs[HOME];
+        tabsFollow(deck.page);
         // all tabs the same size: once each has shrunk to fit, they all take the smallest
         r.post(() -> {
             float min = Float.MAX_VALUE;
@@ -555,7 +563,7 @@ public class HomeActivity extends Activity {
     }
 
     private void renderCare() {
-        if (careBox != null) CarePages.fill(this, t, careBox, this::renderCare);
+        if (careBox != null) CarePages.fill(this, t, careBox, this::renderCare, () -> deck.go(CALLS, true));
         if (peoplePage != null) CarePages.fillPeople(this, t, peoplePage);
     }
 
@@ -564,7 +572,8 @@ public class HomeActivity extends Activity {
         summaryCard.removeAllViews();
         if (!Notes.enabled(this)) return;   // set up from Accessibility
         Summary s = Summary.of(this);
-        TextView h = Ui.centered(Ui.text(this, t, s.headline, 20, t.ink, Theme.regular));
+        TextView h = Ui.text(this, t, s.styled(t), 20, t.ink, Theme.regular);
+        if (s.first.isEmpty() && s.quieter.isEmpty()) Ui.centered(h);
         summaryCard.addView(h, Ui.wide());
         if (s.first.isEmpty() && s.quieter.isEmpty()) return;
         TextView read = Ui.button(this, t, "Read it to me", v -> speak(Summary.of(this).spoken()));
@@ -592,22 +601,22 @@ public class HomeActivity extends Activity {
         });
     }
 
-    /** Everything Herbarium is holding, grouped: people and calls first, then the quieter things. */
+    /** Everything Herbarium is holding, grouped: what needs the person first, then what can wait. */
     private void openNotes() {
         sheet.removeAllViews();
         Steady.Scroll sc = new Steady.Scroll(this, t);
         LinearLayout col = Ui.column(this); col.setPadding(t.dp(22), t.dp(48), t.dp(22), t.dp(60));
         Summary s = Summary.of(this);
         col.addView(Ui.centered(Ui.caps(this, t, "Letters", 30, t.ink)));
-        lettersHeadline = Ui.centered(Ui.text(this, t, s.headline, 19, t.sepia, Theme.italic));
+        lettersHeadline = Ui.text(this, t, s.styled(t), 19, t.ink, Theme.regular);
         col.addView(lettersHeadline, Ui.wide(t.sdp(8)));
         TextView back = Ui.button(this, t, "▾  Back", v -> closeSheet());
         TextView read = Ui.button(this, t, "Read it to me", v -> speak(Summary.of(this).spoken()));
         if (Summary.canSpeak(this)) col.addView(Ui.pair(this, t, back, read), Ui.wide(t.sdp(14)));
         else col.addView(back, Ui.wide(t.sdp(14)));
-        if (!s.first.isEmpty()) { View h = Ui.heading(this, t, "First"); h.setTag("heading"); col.addView(h); for (Summary.Group g : s.first) col.addView(noteCard(g), Ui.wide(t.sdp(8))); }
-        if (!s.quieter.isEmpty()) { View h = Ui.heading(this, t, "Quieter"); h.setTag("heading"); col.addView(h); for (Summary.Group g : s.quieter) col.addView(noteCard(g), Ui.wide(t.sdp(8))); }
-        if (s.resting > 0) col.addView(Ui.text(this, t, Summary.capital(Summary.count(s.resting, "note")) + " from apps that are resting while Clausus is on.", 16, t.sepia, Theme.italic), Ui.wide(t.sdp(18)));
+        if (!s.first.isEmpty()) { View h = Ui.heading(this, t, Summary.FIRST); h.setTag("heading"); col.addView(h); for (Summary.Group g : s.first) col.addView(noteCard(g), Ui.wide(t.sdp(8))); }
+        if (!s.quieter.isEmpty()) { View h = Ui.heading(this, t, Summary.LATER); h.setTag("heading"); col.addView(h); for (Summary.Group g : s.quieter) col.addView(noteCard(g), Ui.wide(t.sdp(8))); }
+        if (s.resting > 0) col.addView(Ui.text(this, t, s.restingLine(), 16, t.sepia, Theme.italic), Ui.wide(t.sdp(18)));
         if (!s.first.isEmpty() || !s.quieter.isEmpty())
             col.addView(Ui.button(this, t, "Clear them all", v -> { Notes.clearAll(this); closeSheet(); renderSummary(); }), Ui.wide(t.sdp(22)));
         sc.addView(col, Ui.wide());
@@ -640,7 +649,7 @@ public class HomeActivity extends Activity {
                         && (at >= col.getChildCount() || !"note".equals(col.getChildAt(at).getTag()))) col.removeViewAt(at - 1);
                 Summary s = Summary.of(HomeActivity.this);
                 boolean any = !s.first.isEmpty() || !s.quieter.isEmpty();
-                if (lettersHeadline != null) lettersHeadline.setText(any ? s.headline : "All read.");
+                if (lettersHeadline != null) lettersHeadline.setText(any ? s.styled(t) : "All read.");
                 renderSummary();
                 if (!any) ui.postDelayed(HomeActivity.this::closeSheet, 700);
             }

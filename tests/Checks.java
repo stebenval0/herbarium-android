@@ -54,6 +54,25 @@ public class Checks {
         same("...and the text isn't shown twice", two.cardDetail(), "");
         two.notes.add(bare);
         same("several notices from one app", two.cardLine(), "Two notices");
+        // ---- the headline names every source, one line per kind
+        java.util.List<Notes.Note> pile = new java.util.ArrayList<>();
+        pile.add(note("k1", "dialer", "Phone", "Mom", "Missed call", "", false, true, true, android.app.Notification.CATEGORY_MISSED_CALL));
+        pile.add(note("k2", "sms", "Messages", "Anna", "Coming at six?", "Anna", true, false, true, ""));
+        pile.add(note("k3", "sms", "Messages", "Anna", "Bring bread", "Anna", true, false, true, ""));
+        pile.add(note("k4", "cal", "Calendar", "Dentist at 3", "Dr Lee", "", false, false, true, android.app.Notification.CATEGORY_REMINDER));
+        pile.add(note("k5", "gm", "Gmail", "Delta", "Your trip", "", false, false, false, ""));
+        pile.add(note("k6", "gm", "Gmail", "CVS", "Ready", "", false, false, false, ""));
+        pile.add(note("k7", "sms", "Messages", "22395", "Code 4821", "22395", true, false, true, ""));
+        pile.add(note("k8", "rd", "Reddit", "r/all", "Hot", "", false, false, false, ""));
+        Summary sum = Summary.build(pile, new java.util.HashSet<>(java.util.Arrays.asList("rd")), w -> false);
+        same("headline", sum.headline, "Missed call: Mom\nMessages: Anna (2)\nReminder: Dentist at 3\nCan wait: Gmail (2), Unknown numbers");
+        check("blocked apps only counted", sum.resting == 1);
+        same("nothing", Summary.build(new java.util.ArrayList<>(), new java.util.HashSet<>(), w -> false).headline, "Nothing new.");
+        check("spoken has no separators", !sum.spoken().contains("·") && sum.spoken().startsWith("Mom called."));
+        java.util.List<Notes.Note> many = new java.util.ArrayList<>();
+        for (String w : new String[]{"Ann", "Ben", "Cy", "Di", "Ed"}) many.add(note("m" + w, "sms", "Messages", w, "hi", w, true, false, true, ""));
+        same("long lists are capped", Summary.build(many, new java.util.HashSet<>(), w -> true).headline, "Messages: Ann, Ben, Cy +2");
+
         same("first name for the call-back button", Missed.first("Ruth Ellis"), "Ruth");
         same("a number stays whole", Missed.first("(225) 555-0100"), "(225) 555-0100");
 
@@ -100,5 +119,9 @@ public class Checks {
 
         System.out.println("checks: " + passed + " passed" + (failed > 0 ? ", " + failed + " FAILED" : ""));
         if (failed > 0) System.exit(1);
+    }
+    static Notes.Note note(String key, String pkg, String app, String title, String text, String person, boolean msg, boolean call, boolean imp, String cat) {
+        Notes.Note n = new Notes.Note(); n.key = key; n.pkg = pkg; n.app = app; n.title = title; n.text = text; n.person = person;
+        n.message = msg; n.call = call; n.important = imp; n.category = cat; return n;
     }
 }

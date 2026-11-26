@@ -33,7 +33,7 @@ final class CarePages {
     static final class Person { String name, number; }
 
     /** Fill `box` (on Home, under the clock) with the calls to return, favourites and the three apps. */
-    static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh) {
+    static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone) {
         box.removeAllViews();
         List<Missed.Call> waiting = Missed.waiting(a);
         if (!waiting.isEmpty()) {
@@ -62,7 +62,7 @@ final class CarePages {
         box.addView(Ui.heading(a, t, "Your phone"));
         TextView phone = tile(a, t, "Phone", "Dial a number", v -> open(a, Apps.dialer(a), new Intent(Intent.ACTION_DIAL)));
         TextView msgs = tile(a, t, "Messages", "Read and send texts", v -> open(a, Apps.messages(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING)));
-        TextView people = tile(a, t, "Contacts", "Everyone you know", v -> open(a, Apps.contacts(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_CONTACTS)));
+        TextView people = tile(a, t, "Contacts", "Everyone you know", v -> everyone.run());   // Herbarium's own list, never Android's Contacts app
         box.addView(phone, Ui.wide(t.sdp(4)));
         box.addView(msgs, Ui.wide(t.sdp(10)));
         box.addView(people, Ui.wide(t.sdp(10)));

@@ -187,10 +187,13 @@ final class HomePages {
         });
         done.setContentDescription("Done with " + v.name + ", no reply needed");
         if (reply != null) {
-            LinearLayout pair = Ui.row(a);
-            LinearLayout.LayoutParams rp = Ui.weight(); rp.weight = 2; rp.rightMargin = t.dp(8);
-            pair.addView(reply, rp); pair.addView(done, Ui.weight());
-            r.addView(t.large() ? Ui.pair(a, t, reply, done) : pair, Ui.wide(t.sdp(10)));
+            if (t.large()) r.addView(Ui.pair(a, t, reply, done), Ui.wide(t.sdp(10)));
+            else {
+                LinearLayout pair = Ui.row(a);
+                LinearLayout.LayoutParams rp = Ui.weight(); rp.weight = 2; rp.rightMargin = t.dp(8);
+                pair.addView(reply, rp); pair.addView(done, Ui.weight());
+                r.addView(pair, Ui.wide(t.sdp(10)));
+            }
         } else r.addView(done, Ui.wide(t.sdp(10)));
         Steady.tap(r, t, x -> a.startActivity(new Intent(a, ThreadActivity.class).putExtra("thread", v.thread).putExtra("to", v.addresses.toArray(new String[0]))));
         r.setContentDescription(v.name + (v.unread > 0 ? ", new" : "") + ". " + said);

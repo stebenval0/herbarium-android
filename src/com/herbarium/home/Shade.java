@@ -117,9 +117,9 @@ final class Shade {
         AudioManager am = s.getSystemService(AudioManager.class);
         NotificationManager nm = s.getSystemService(NotificationManager.class);
         boolean dnd = nm != null && nm.getCurrentInterruptionFilter() > NotificationManager.INTERRUPTION_FILTER_ALL;
-        addPair(grid, t,
-                ctl(t, torch ? "Torch · on" : "Torch", torch, v -> { toggleTorch(); rebuild(); }),
-                ctl(t, dnd ? "Quiet · on" : "Quiet", dnd, v -> { toggleDnd(nm); rebuild(); }));
+        TextView torchB = ctl(t, torch ? "Torch · on" : "Torch", torch, v -> { toggleTorch(); rebuild(); });
+        if (Care.on(s)) grid.addView(torchB, Ui.wide(t.dp(10)));          // Caretaken: calls always ring, so there's no Quiet
+        else addPair(grid, t, torchB, ctl(t, dnd ? "Quiet · on" : "Quiet", dnd, v -> { toggleDnd(nm); rebuild(); }));
         if (Settings.System.canWrite(s))
             addPair(grid, t,
                     ctl(t, "Dimmer", false, v -> brightness(-40)),
@@ -141,13 +141,16 @@ final class Shade {
         // the day's notes (never over the lock screen)
         if (Notes.enabled(s) && !locked) {
             Summary sum = Summary.of(s);
-            col.addView(Ui.centered(Ui.text(s, t, sum.headline, 19, t.ink, Theme.italic)), Ui.wide(t.sdp(18)));
+            col.addView(Ui.text(s, t, sum.styled(t), 19, t.ink, Theme.regular), Ui.wide(t.sdp(18)));
             int shown = 0;
-            for (java.util.List<Summary.Group> part : java.util.Arrays.asList(sum.first, sum.quieter))
+            for (java.util.List<Summary.Group> part : java.util.Arrays.asList(sum.first, sum.quieter)) {
+                if (part.isEmpty() || shown >= 8) continue;
+                col.addView(Ui.heading(s, t, part == sum.first ? Summary.FIRST : Summary.LATER));
                 for (Summary.Group g : part) {
                     if (shown++ >= 8) break;
                     col.addView(card(t, g), Ui.wide(t.sdp(8)));
                 }
+            }
             if (shown > 0) col.addView(Ui.button(s, t, "Clear them all", v -> { Notes.clearAll(s); rebuild(); }), Ui.wide(t.sdp(14)));
         }
         col.addView(Ui.primary(s, t, "Close", v -> hide()), Ui.wide(t.sdp(18)));

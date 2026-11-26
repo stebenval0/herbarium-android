@@ -66,7 +66,7 @@ public class LockActivity extends Activity {
         date = Ui.centered(Ui.text(this, t, "", 23, t.sepia, Theme.regular));
         TextView wx = Ui.centered(Ui.caps(this, t, Weather.line(this), 15, t.sepia));
         col.addView(time, Ui.wide(t.sdp(6))); col.addView(date, Ui.wide(t.sdp(4))); col.addView(wx, Ui.wide(t.sdp(10)));
-        headline = Ui.centered(Ui.text(this, t, "", 21, t.ink, Theme.italic));
+        headline = Ui.text(this, t, "", 21, t.ink, Theme.regular);
         col.addView(headline, Ui.wide(t.sdp(34)));
         calls = Ui.column(this); th = t;
         col.addView(calls, Ui.wide(t.sdp(18)));
@@ -139,7 +139,7 @@ public class LockActivity extends Activity {
         String[] days = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
         String[] months = {"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
         date.setText(days[d.get(Calendar.DAY_OF_WEEK) - 1] + ", the " + HomeActivity.ord(d.get(Calendar.DAY_OF_MONTH)) + " of " + months[d.get(Calendar.MONTH)]);
-        headline.setText(Notes.enabled(this) ? Summary.of(this).headline : "");
+        if (Notes.enabled(this)) { Summary sm = Summary.of(this); headline.setText(sm.styled(th)); headline.setGravity(sm.first.isEmpty() && sm.quieter.isEmpty() ? android.view.Gravity.CENTER_HORIZONTAL : android.view.Gravity.START); } else headline.setText("");
         KeyguardManager km = getSystemService(KeyguardManager.class);
         if (km != null && !km.isKeyguardLocked() && !getIntent().getBooleanExtra("preview", false)) finish();     // unlocked some other way (fingerprint, say)
     }

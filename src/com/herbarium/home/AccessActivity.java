@@ -390,7 +390,10 @@ public class AccessActivity extends Activity {
     private EditText field(String hint, int type) {
         EditText e = new EditText(this);
         e.setHint(hint); e.setHintTextColor(t.sepia); e.setTextColor(t.ink); e.setTypeface(Theme.regular);
-        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.sp(20)); e.setInputType(type); e.setSingleLine(true);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.sp(20)); e.setSingleLine(true); e.setInputType(type);
+        // (setSingleLine and setInputType both reset these, so they come last)
+        if ((type & InputType.TYPE_MASK_VARIATION) == InputType.TYPE_NUMBER_VARIATION_PASSWORD) e.setTransformationMethod(android.text.method.PasswordTransformationMethod.getInstance());
+        e.setTypeface(Theme.regular);
         e.setMinHeight(t.target(56)); e.setPadding(t.sdp(12), 0, t.sdp(12), 0);
         GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.sdp(12)); g.setStroke(t.dp(1.2f), t.sepia); g.setColor(t.night ? 0x661e2650 : 0x99f3ecda);
         e.setBackground(g);
