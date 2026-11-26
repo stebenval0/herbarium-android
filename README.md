@@ -14,7 +14,7 @@ A calm home screen for Android. Pressed-flower plates instead of rows of icons. 
 4. Tap **Install**, then **Open**.
 5. When the phone asks which home screen to use, choose **Herbarium** and **Always**.
 
-Herbarium then walks you through eight short steps: your name, text size, your town (for the weather), calls, notifications, protection, a keeper, and done. You can change all of it later in Herbarium's **Settings**.
+Herbarium then asks who the phone is for and walks you through a short checklist, one step per page: name, text size, town (for the weather), home screen, calls, texts, keyboard and voice, notifications, protection, and, for a phone you look after, favourite people and a helper PIN. You can change all of it later in Herbarium's **Settings**.
 
 ### "Restricted setting"
 
@@ -42,7 +42,7 @@ For the strongest lock, the keeper connects the phone to their computer once wit
 
 ## Updates
 
-Herbarium checks for a new version once a day and offers it in Herbarium's Settings. To check straight away, tap **Check for an update** there. Each update is checked against its fingerprint before it installs.
+Herbarium checks for a new version once a day and, when there is one, shows a quiet notice; the update itself is installed from Herbarium's Settings. To check straight away, tap **Check for an update** there. Each update is checked against its fingerprint before it installs.
 
 ## Building from source
 
