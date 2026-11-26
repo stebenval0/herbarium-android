@@ -339,10 +339,13 @@ public class HomeActivity extends Activity {
             time.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(36)); date.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(15)); date.setGravity(Gravity.START);
             LinearLayout head = Ui.row(this); head.setGravity(Gravity.CENTER_VERTICAL); head.setPadding(t.dp(22), 0, t.dp(22), 0);
             head.addView(time, Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-            LinearLayout.LayoutParams dl = Ui.weight(); dl.leftMargin = t.dp(14);
-            head.addView(date, dl);
+            View upright = new View(this); upright.setBackgroundColor(((t.night ? t.gold : 0xff9a7428) & 0x00ffffff) | 0x99000000);
+            LinearLayout.LayoutParams ul = Ui.lp(t.dp(1), t.dp(56)); ul.leftMargin = t.dp(16); ul.rightMargin = t.dp(16);
+            head.addView(upright, ul);
+            date.setTypeface(Theme.italic);
+            head.addView(date, Ui.weight());
             col.addView(head, Ui.wide());
-            col.addView(Ui.centered(Ui.text(this, t, "✦  ✦  ✦", 12, t.gold, Theme.regular)), Ui.wide(t.dp(2)));
+            col.addView(CarePages.ornament(this, t), Ui.wide(t.dp(8)));
         } else {
             col.addView(time, Ui.wide(t.sdp(2)));
             if (!care) col.addView(greeting, Ui.wide(t.sdp(2)));

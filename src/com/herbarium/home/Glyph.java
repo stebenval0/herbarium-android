@@ -29,6 +29,19 @@ final class Glyph {
         };
     }
 
+    /** The sign as a drawable, for the start of a button's label. */
+    static android.graphics.drawable.Drawable icon(String sign, int size, int color, float stroke) {
+        return new android.graphics.drawable.Drawable() {
+            { setBounds(0, 0, size, size); }
+            @Override public void draw(Canvas cv) { android.graphics.Rect b = getBounds(); Glyph.draw(cv, sign, b.exactCenterX(), b.exactCenterY(), size * .42f, color, stroke); }
+            @Override public int getIntrinsicWidth() { return size; }
+            @Override public int getIntrinsicHeight() { return size; }
+            @Override public void setAlpha(int a) {}
+            @Override public void setColorFilter(android.graphics.ColorFilter f) {}
+            @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        };
+    }
+
     /** The sign itself, drawn in a box of half-size `s` around (x, y). */
     static void draw(Canvas c, String chapter, float x, float y, float s, int color, float stroke) {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -98,6 +111,25 @@ final class Glyph {
                 path.moveTo(x, y + s * .85f);
                 path.cubicTo(x - s * 1.25f, y - s * .05f, x - s * .55f, y - s * 1.05f, x, y - s * .4f);
                 path.cubicTo(x + s * .55f, y - s * 1.05f, x + s * 1.25f, y - s * .05f, x, y + s * .85f);
+                c.drawPath(path, p);
+                break;
+            }
+            case "Letter": {         // a sealed envelope
+                c.drawRoundRect(new RectF(x - s * .95f, y - s * .62f, x + s * .95f, y + s * .62f), s * .1f, s * .1f, p);
+                path.moveTo(x - s * .95f, y - s * .62f); path.lineTo(x, y + s * .1f); path.lineTo(x + s * .95f, y - s * .62f);
+                c.drawPath(path, p);
+                break;
+            }
+            case "People": {         // a head and shoulders
+                c.drawCircle(x, y - s * .42f, s * .38f, p);
+                path.moveTo(x - s * .85f, y + s * .92f); path.cubicTo(x - s * .8f, y + s * .1f, x + s * .8f, y + s * .1f, x + s * .85f, y + s * .92f);
+                c.drawPath(path, p);
+                break;
+            }
+            case "Emergency": {      // a cross
+                path.moveTo(x - s * .28f, y - s * .9f); path.lineTo(x + s * .28f, y - s * .9f); path.lineTo(x + s * .28f, y - s * .28f); path.lineTo(x + s * .9f, y - s * .28f);
+                path.lineTo(x + s * .9f, y + s * .28f); path.lineTo(x + s * .28f, y + s * .28f); path.lineTo(x + s * .28f, y + s * .9f); path.lineTo(x - s * .28f, y + s * .9f);
+                path.lineTo(x - s * .28f, y + s * .28f); path.lineTo(x - s * .9f, y + s * .28f); path.lineTo(x - s * .9f, y - s * .28f); path.lineTo(x - s * .28f, y - s * .28f); path.close();
                 c.drawPath(path, p);
                 break;
             }

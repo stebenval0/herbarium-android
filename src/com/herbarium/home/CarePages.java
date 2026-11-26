@@ -142,8 +142,7 @@ final class CarePages {
         }
 
         // the way to everything else, always in the same place
-        View rule = Ui.rule(a, t); LinearLayout.LayoutParams rp = Ui.lp(ViewGroup.LayoutParams.MATCH_PARENT, t.dp(1)); rp.setMargins(t.dp(30), t.dp(14), t.dp(30), t.dp(4));
-        box.addView(rule, rp);
+        box.addView(ornament(a, t), Ui.wide(t.dp(10)));
         float size = 18;
         TextView phone = big(Ui.button(a, t, "Phone", v -> open(a, Apps.dialer(a), new Intent(Intent.ACTION_DIAL))), t, size);
         TextView msgs = big(Ui.button(a, t, "Texts", v -> open(a, Apps.messages(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING))), t, size);
@@ -152,7 +151,13 @@ final class CarePages {
         all.setContentDescription("Everyone you know, with a Call button each");
         TextView sos = big(Ui.button(a, t, "Emergency", v -> DialActivity.emergency(a)), t, size);
         sos.setTextColor(warn); sos.setContentDescription("Emergency call: opens the number pad with the emergency number typed in");
-        for (TextView b : new TextView[]{phone, msgs, all, sos}) Ui.wholeWords(b, 14);
+        String[] signs = {"Phone", "Letter", "People", "Emergency"}; TextView[] four = {phone, msgs, all, sos};
+        for (int i = 0; i < 4; i++) {
+            TextView b = four[i];
+            b.setCompoundDrawablesRelative(Glyph.icon(signs[i], t.dp(26), i == 3 ? warn : t.sage, t.dp(1.8f)), null, null, null);
+            b.setCompoundDrawablePadding(t.dp(6));
+            Ui.wholeWords(b, 14);
+        }
         box.addView(Ui.sideBySide(a, t, phone, msgs), Ui.wide(t.dp(8)));
         box.addView(Ui.sideBySide(a, t, all, sos), Ui.wide(t.dp(8)));
     }
@@ -184,19 +189,52 @@ final class CarePages {
         return new java.text.SimpleDateFormat("EEEE", java.util.Locale.getDefault()).format(new Date(at));
     }
 
+    /** A fine engraved rule: a hairline, a small gold star, a hairline. */
+    static View ornament(Activity a, Theme t) {
+        int gold = t.night ? t.gold : 0xff9a7428;
+        return new View(a) {
+            final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+            { setMinimumHeight(t.dp(16)); setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO); }
+            @Override protected void onDraw(android.graphics.Canvas c) {
+                float w = getWidth(), y = getHeight() / 2f, s = t.dp(5);
+                p.setColor((gold & 0x00ffffff) | 0x99000000); p.setStrokeWidth(t.dp(.8f));
+                c.drawLine(w * .12f, y, w / 2f - s * 2.4f, y, p); c.drawLine(w / 2f + s * 2.4f, y, w * .88f, y, p);
+                p.setColor(gold);
+                android.graphics.Path star = new android.graphics.Path();
+                star.moveTo(w / 2f, y - s); star.quadTo(w / 2f, y, w / 2f + s, y); star.quadTo(w / 2f, y, w / 2f, y + s); star.quadTo(w / 2f, y, w / 2f - s, y); star.quadTo(w / 2f, y, w / 2f, y - s);
+                c.drawPath(star, p);
+            }
+        };
+    }
+
     /** A letter's paper: the page's own colour, a gold hairline, soft corners. */
     private static LinearLayout letter(Activity a, Theme t, boolean urgent) {
         LinearLayout card = Ui.column(a);
-        card.setPadding(t.dp(16), t.dp(10), t.dp(12), t.dp(12));
-        GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.dp(18));
-        g.setColor(t.night ? 0x662c3870 : 0xccf3ecda); g.setStroke(t.dp(urgent ? 2 : 1), urgent ? (t.night ? t.gold : 0xff9a7428) : (t.night ? 0x99b8913e : 0x889a7428));
-        card.setBackground(g);
+        card.setPadding(t.dp(18), t.dp(12), t.dp(14), t.dp(14));
+        int gold = t.night ? t.gold : 0xff9a7428;
+        // an engraved frame: a gold line, and a finer one just inside it, like the border of a plate
+        GradientDrawable outer = new GradientDrawable(); outer.setCornerRadius(t.dp(18));
+        outer.setColor(t.night ? 0x662c3870 : 0xccf3ecda); outer.setStroke(t.dp(urgent ? 1.6f : 1.1f), urgent ? gold : (gold & 0x00ffffff) | 0x99000000);
+        GradientDrawable inner = new GradientDrawable(); inner.setCornerRadius(t.dp(14));
+        inner.setColor(0); inner.setStroke(t.dp(.7f), (gold & 0x00ffffff) | 0x66000000);
+        android.graphics.drawable.LayerDrawable frame = new android.graphics.drawable.LayerDrawable(new android.graphics.drawable.Drawable[]{outer, inner});
+        frame.setLayerInset(1, t.dp(4), t.dp(4), t.dp(4), t.dp(4));
+        card.setBackground(frame);
         return card;
+    }
+
+    /** The small line at the top of a letter (what, when) with its seal at the end: a handset or an envelope. */
+    private static View letterHead(Activity a, Theme t, String text, String sign) {
+        LinearLayout r = Ui.row(a); r.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        r.addView(big(Ui.caps(a, t, text, 11, t.sage), t, 11), Ui.weight());
+        int s = t.dp(38);
+        r.addView(Glyph.seal(a, t, sign), Ui.lp(s, s));
+        return r;
     }
 
     private static View callLetter(Activity a, Theme t, Missed.Call m, Runnable refresh) {
         LinearLayout card = letter(a, t, true);
-        card.addView(big(Ui.caps(a, t, (m.times > 1 ? m.times + " calls" : "A call") + " · " + shortWhen(m.at), 11, t.sage), t, 11));
+        card.addView(letterHead(a, t, (m.times > 1 ? m.times + " calls" : "A call") + " · " + shortWhen(m.at), "Phone"));
         card.addView(oneLine(big(Ui.text(a, t, m.name, 21, t.ink, Theme.semi), t, 21), t), Ui.wide(t.dp(2)));
         TextView call = big(Ui.primary(a, t, "Call back", v -> Missed.callBack(a, m.number)), t, 18);
         call.setContentDescription("Call " + m.name + " back");
@@ -208,7 +246,7 @@ final class CarePages {
 
     private static View textLetter(Activity a, Theme t, Texts.Conv v, Runnable refresh) {
         LinearLayout card = letter(a, t, v.unread > 0);
-        card.addView(big(Ui.caps(a, t, (v.unread > 1 ? v.unread + " letters" : "A letter") + " · " + shortWhen(v.date), 11, t.sage), t, 11));
+        card.addView(letterHead(a, t, (v.unread > 1 ? v.unread + " letters" : "A letter") + " · " + shortWhen(v.date), "Letter"));
         card.addView(oneLine(big(Ui.text(a, t, v.name, 21, t.ink, Theme.semi), t, 21), t), Ui.wide(t.dp(2)));
         TextView said = big(Ui.text(a, t, Sorter.withoutLinks(v.snippet == null ? "" : v.snippet), 17, t.ink, Theme.regular), t, 17);
         said.setMaxLines(2); said.setEllipsize(android.text.TextUtils.TruncateAt.END);
