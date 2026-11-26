@@ -63,7 +63,7 @@ public class LockActivity extends Activity {
         View moon = new View(this) { @Override protected void onDraw(Canvas c) { Paper.moon(c, getWidth() / 2f, getHeight() / 2f, Math.min(getWidth(), getHeight()) / 2f - t.dp(1), t); } };
         LinearLayout.LayoutParams mp = Ui.lp(t.sdp(30), t.sdp(30)); mp.gravity = Gravity.CENTER_HORIZONTAL;
         col.addView(moon, mp); moonView = moon;
-        time = Ui.centered(Ui.text(this, t, "", 108, t.ink, Theme.regular)); time.setLetterSpacing(-.02f);
+        time = Ui.wholeWords(Ui.centered(Ui.text(this, t, "", 108, t.ink, Theme.regular)), 30); time.setLetterSpacing(-.02f); time.setMaxLines(1);   // the clock never wraps ("12:0 / 4")
         date = Ui.wholeWords(Ui.centered(Ui.text(this, t, "", 23, t.sepia, Theme.regular)), 14);
         TextView wx = Ui.centered(Ui.caps(this, t, Weather.line(this), 15, t.sepia));
         col.addView(time, Ui.wide(t.sdp(6))); col.addView(date, Ui.wide(t.sdp(4))); col.addView(wx, Ui.wide(t.sdp(10)));

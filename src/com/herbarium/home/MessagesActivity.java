@@ -135,7 +135,7 @@ public class MessagesActivity extends Activity {
         g.setColor(t.night ? 0x332c3870 : 0x66f3ecda); g.setStroke(t.dp(v.unread > 0 ? 2 : 1), v.unread > 0 ? t.gold : 0x556e5d45);
         r.setBackground(g);
         LinearLayout top = Ui.row(this);
-        TextView name = Ui.text(this, t, v.name, 21, t.ink, v.unread > 0 ? Theme.semi : Theme.regular);
+        TextView name = Ui.wholeWords(Ui.text(this, t, v.name, 21, t.ink, v.unread > 0 ? Theme.semi : Theme.regular), 14);
         name.setMaxLines(2);
         top.addView(name, Ui.weight());
         TextView when = Ui.text(this, t, when(v.date), 15, t.sepia, Theme.regular);
