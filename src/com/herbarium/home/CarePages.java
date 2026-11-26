@@ -37,6 +37,7 @@ final class CarePages {
 
     /** The same, with the call log and contacts already read (off the main thread). */
     static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav) {
+        if (t.large()) { fillLarge(a, t, box, refresh, everyone, waiting, fav); return; }
         box.removeAllViews();
         // things that stop calls coming in, said plainly (the person can't fix them; a helper can)
         if (android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1)
@@ -92,6 +93,70 @@ final class CarePages {
     private static View favButton(Activity a, Theme t, Person p) {
         TextView b = Ui.button(a, t, p.name, v -> Missed.callBack(a, p.number));
         b.setMaxLines(2); Ui.wholeWords(b, 12);
+        b.setContentDescription("Call " + p.name);
+        return b;
+    }
+
+    /**
+     * Caretaken Home at big text sizes: everything on one screen, nothing shrunk. Big buttons, one or two words each:
+     *   the newest call to return (name, and Call back beside it),
+     *   favourites two to a row (two of them when a call is waiting, four otherwise), then "Everyone",
+     *   Phone | Messages, and Emergency call. (Voicemail is on the Phone page.)
+     */
+    static void fillLarge(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav) {
+        box.removeAllViews();
+        float size = 20;                                   // every button on the page the same size (t.btn: twice the normal at 300%)
+        if (android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1)
+            box.addView(big(Ui.text(a, t, "Airplane mode is on: no calls.", 16, t.night ? 0xffe8907a : 0xff9c3b2e, Theme.semi), t, 16), Ui.wide(t.dp(6)));
+        if (Guard.instance == null)
+            box.addView(big(Ui.text(a, t, "Ask a helper: protection is off.", 16, t.night ? 0xffe8907a : 0xff9c3b2e, Theme.semi), t, 16), Ui.wide(t.dp(6)));
+        if (!waiting.isEmpty()) {
+            Missed.Call m = waiting.get(0);
+            LinearLayout card = Ui.row(a); card.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            card.setPadding(t.dp(14), t.dp(10), t.dp(10), t.dp(10));
+            GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.dp(18));
+            g.setColor(t.night ? 0x552c3870 : 0xccf3ecda); g.setStroke(t.dp(2), t.night ? t.gold : 0xff9a7428);
+            card.setBackground(g);
+            LinearLayout who = Ui.column(a);
+            who.addView(Ui.wholeWords(big(Ui.text(a, t, Missed.first(m.name), size, t.ink, Theme.semi), t, size), 14));
+            String more = waiting.size() > 1 ? " · +" + (waiting.size() - 1) : "";
+            who.addView(big(Ui.text(a, t, "called" + more, 14, t.sepia, Theme.regular), t, 14));
+            LinearLayout.LayoutParams wl = Ui.weight(); wl.rightMargin = t.dp(8);
+            card.addView(who, wl);
+            TextView call = big(Ui.primary(a, t, "Call back", v -> Missed.callBack(a, m.number)), t, size);
+            call.setContentDescription("Call " + m.name + " back"); Ui.wholeWords(call, 14);
+            card.addView(call, Ui.weight());
+            box.addView(card, Ui.wide(t.dp(6)));
+        }
+        int room = waiting.isEmpty() ? 5 : 3;              // favourite buttons, before "Everyone" (rows of two)
+        List<View> people = new ArrayList<>();
+        for (int i = 0; i < fav.size() && i < room; i++) people.add(nameButton(a, t, fav.get(i), size));
+        TextView all = big(Ui.button(a, t, "Everyone", v -> everyone.run()), t, size);
+        all.setContentDescription("Everyone you know, with a Call button each"); Ui.wholeWords(all, 14);
+        people.add(all);
+        for (int i = 0; i < people.size(); i += 2)
+            box.addView(Ui.sideBySide(a, t, people.get(i), i + 1 < people.size() ? people.get(i + 1) : new View(a)), Ui.wide(t.dp(8)));
+        TextView phone = big(Ui.button(a, t, "Phone", v -> open(a, Apps.dialer(a), new Intent(Intent.ACTION_DIAL))), t, size);
+        TextView msgs = big(Ui.button(a, t, "Texts", v -> open(a, Apps.messages(a), Intent.makeMainSelectorActivity(Intent.ACTION_MAIN, Intent.CATEGORY_APP_MESSAGING))), t, size);
+        msgs.setContentDescription("Messages");
+        box.addView(Ui.sideBySide(a, t, phone, msgs), Ui.wide(t.dp(8)));
+        TextView sos = big(Ui.button(a, t, "Emergency " + DialActivity.emergencyNumber(a), v -> DialActivity.emergency(a)), t, size);
+        sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e); Ui.wholeWords(sos, 14);
+        sos.setContentDescription("Emergency call: opens the number pad with the emergency number typed in");
+        box.addView(sos, Ui.wide(t.dp(8)));
+    }
+
+    /** Text and button size for the big Caretaken Home: the button scale (t.btn), tight padding, never taller than needed. */
+    private static <V extends TextView> V big(V v, Theme t, float sp) {
+        v.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.btn(sp));
+        v.setLineSpacing(0, 1.05f);
+        if (v.getBackground() != null) { v.setMinHeight(t.dp(64)); v.setMinimumHeight(t.dp(64)); v.setPadding(t.dp(8), t.dp(6), t.dp(8), t.dp(6)); }
+        return v;
+    }
+
+    private static View nameButton(Activity a, Theme t, Person p, float size) {
+        TextView b = big(Ui.button(a, t, Missed.first(p.name), v -> Missed.callBack(a, p.number)), t, size);
+        b.setMaxLines(1); Ui.wholeWords(b, 14);
         b.setContentDescription("Call " + p.name);
         return b;
     }

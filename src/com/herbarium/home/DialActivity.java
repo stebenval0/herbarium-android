@@ -70,6 +70,8 @@ public class DialActivity extends Activity {
         Steady.repeatable(del);
         TextView back = Ui.button(this, t, "‹ Back", v -> finish());
         col.addView(Ui.pair(this, t, del, back), Ui.wide(t.sdp(12)));
+        if (!getIntent().getBooleanExtra("emergency", false))
+            col.addView(Ui.button(this, t, "Voicemail", v -> { voicemail(this); finish(); }), Ui.wide(t.sdp(12)));
 
         setContentView(sc);
         WindowInsetsController c = getWindow().getInsetsController();

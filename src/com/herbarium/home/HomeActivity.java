@@ -209,7 +209,7 @@ public class HomeActivity extends Activity {
         deck.addPage(csc); CALLS = at++;
         homeScroll = new Steady.Scroll(this, t);
         // Caretaken: Home is seen whole, at any text size, without scrolling
-        if (Care.on(this)) homeScroll.addView(new Ui.Fit(this, buildHome(), homeScroll, .75f, t.dp(104)), Ui.wide());
+        if (Care.on(this)) homeScroll.addView(new Ui.Fit(this, buildHome(), homeScroll, .9f, t.dp(104)), Ui.wide());
         else homeScroll.addView(buildHome(), Ui.wide());
         deck.addPage(homeScroll); HOME = at++;
         messagesPage = Ui.column(this); messagesPage.setPadding(t.dp(20), t.dp(52), t.dp(20), t.dp(120));
@@ -334,18 +334,27 @@ public class HomeActivity extends Activity {
         season = Ui.centered(Ui.caps(this, t, "", 13, t.sage));
         if (t.large()) weatherLine.setTypeface(Theme.regular);
         greeting = Ui.centered(Ui.text(this, t, "", 18, t.sage, Theme.italic));
-        col.addView(time, Ui.wide(t.sdp(2)));
-        if (!care) col.addView(greeting, Ui.wide(t.sdp(2)));
-        col.addView(date, Ui.wide(t.sdp(4)));
+        if (care && t.large()) {           // one line: the time, and the day beside it
+            time.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(36)); date.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(15)); date.setGravity(Gravity.START);
+            LinearLayout head = Ui.row(this); head.setGravity(Gravity.CENTER_VERTICAL); head.setPadding(t.dp(22), 0, t.dp(22), 0);
+            head.addView(time, Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            LinearLayout.LayoutParams dl = Ui.weight(); dl.leftMargin = t.dp(14);
+            head.addView(date, dl);
+            col.addView(head, Ui.wide());
+        } else {
+            col.addView(time, Ui.wide(t.sdp(2)));
+            if (!care) col.addView(greeting, Ui.wide(t.sdp(2)));
+            col.addView(date, Ui.wide(t.sdp(4)));
+        }
         if (!(care && t.large())) col.addView(weatherLine, Ui.wide(t.sdp(care ? 4 : 8)));   // Caretaken at big sizes: the calls come before the weather
         if (!care) col.addView(season, Ui.wide(t.sdp(4)));
         summaryCard = Ui.column(this);
-        LinearLayout.LayoutParams scp = Ui.wide(t.sdp(16)); scp.leftMargin = scp.rightMargin = t.dp(22);
+        LinearLayout.LayoutParams scp = Ui.wide(care && t.large() ? t.dp(8) : t.sdp(16)); scp.leftMargin = scp.rightMargin = t.dp(22);
         col.addView(summaryCard, scp);
 
         if (Care.on(this)) {
             careBox = Ui.column(this);
-            LinearLayout.LayoutParams cbp = Ui.wide(t.sdp(10)); cbp.leftMargin = cbp.rightMargin = t.dp(20);
+            LinearLayout.LayoutParams cbp = Ui.wide(t.large() ? t.dp(8) : t.sdp(10)); cbp.leftMargin = cbp.rightMargin = t.dp(20);
             col.addView(careBox, cbp);
             // settings are for the helper: a quiet button that opens only after a 3-second hold (no stray tap gets in)
             TextView access = Ui.text(this, t, "For helpers: hold for settings", 16, t.ink, Theme.regular); access.setAlpha(.8f);
@@ -613,7 +622,7 @@ public class HomeActivity extends Activity {
     /** The theme Home is drawn with: the person's own, or in Caretaken mode the largest size that fits. */
     private Theme themeNow() {
         Theme base = Theme.get(this);
-        if (!Care.on(this)) return base;
+        if (!Care.on(this) || base.large()) return base;      // big sizes: the compact Caretaken Home fits at the real size
         android.content.SharedPreferences p = Theme.prefs(this);
         if (p.getFloat("careFitBase", 0) != base.scale) return base;       // the person changed the text size: start again
         float fit = p.getFloat("careFit", 0);
@@ -622,7 +631,7 @@ public class HomeActivity extends Activity {
     private boolean careDrawn, summaryDrawn; private int careItems, summaryItems;
     /** Once the calls, favourites and summary are all on screen: too tall? one step smaller. Less to show than last time? start again. */
     private void checkCareFit() {
-        if (!Care.on(this) || homeScroll == null || homeScroll.getChildCount() == 0 || !careDrawn || !summaryDrawn) return;
+        if (!Care.on(this) || t.large() || homeScroll == null || homeScroll.getChildCount() == 0 || !careDrawn || !summaryDrawn) return;
         ui.postDelayed(() -> {
             if (homeScroll == null || homeScroll.getChildCount() == 0 || homeScroll.getHeight() == 0) return;
             android.content.SharedPreferences p = Theme.prefs(this);
@@ -664,16 +673,18 @@ public class HomeActivity extends Activity {
 
     private void showSummary(Summary s) {
         summaryCard.removeAllViews();
-        TextView h = Ui.text(this, t, s.styled(t), Care.on(this) && t.large() ? 17 : 20, t.ink, Theme.regular);
+        TextView h = Ui.text(this, t, s.styled(t), 20, t.ink, Theme.regular);
+        if (Care.on(this) && t.large()) {
+            h.setText(s.oneLine()); h.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(15)); h.setMaxLines(2); h.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        }
         if (s.first.isEmpty() && s.quieter.isEmpty()) Ui.centered(h);
         summaryCard.addView(h, Ui.wide());
         if (s.first.isEmpty() && s.quieter.isEmpty()) return;
         TextView read = Ui.button(this, t, "Read it to me", v -> speak(Summary.of(this).spoken()));
         TextView see = Ui.button(this, t, "See them all", v -> openNotes());
         read.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(14)); see.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(14));
-        if (Care.on(this) && t.large()) {      // one button, and the lines themselves open the list
-            Steady.tap(h, t, v -> openNotes());
-            if (Summary.canSpeak(this)) summaryCard.addView(read, Ui.wide(t.sdp(8)));
+        if (Care.on(this) && t.large()) {      // no buttons: the lines open the list (Read it to me is there)
+            Steady.tap(h, t, v -> openNotes()); h.setContentDescription(s.spoken() + ". Tap to see them all.");
         } else if (Summary.canSpeak(this)) summaryCard.addView(Care.on(this) ? Ui.sideBySide(this, t, read, see) : Ui.pair(this, t, read, see), Ui.wide(t.sdp(10)));
         else summaryCard.addView(see, Ui.wide(t.sdp(10)));
     }
