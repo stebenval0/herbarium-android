@@ -37,26 +37,28 @@ public class DialActivity extends Activity {
         col.setPadding(t.dp(22), t.dp(54), t.dp(22), t.dp(40));
         sc.addView(col, Ui.wide());
 
-        col.addView(Ui.centered(Ui.caps(this, t, "Phone", 26, t.ink)));
+        if (!t.large()) col.addView(Ui.centered(Ui.caps(this, t, "Phone", 26, t.ink)));   // big text: room for the keys and Call instead
         shown = Ui.centered(Ui.text(this, t, "", 36, t.ink, Theme.regular));
-        shown.setMinHeight(t.sdp(56)); shown.setSingleLine(true);
+        shown.setMinHeight(t.dp(56)); shown.setMaxLines(1);   // (not setSingleLine: that stops the text from shrinking to fit)
         shown.setAutoSizeTextTypeUniformWithConfiguration(16, Math.round(t.sp(36)), 1, TypedValue.COMPLEX_UNIT_SP);
-        col.addView(shown, Ui.wide(t.sdp(14)));
+        col.addView(shown, Ui.wide(t.dp(14)));
         msg = Ui.centered(Ui.text(this, t, "", 16, t.ochre, Theme.regular));
         col.addView(msg, Ui.wide());
 
         android.widget.GridLayout g = new android.widget.GridLayout(this); g.setColumnCount(3);
         float grow = 1 + (t.scale - 1) * .3f;
-        int cell = Math.min((getResources().getDisplayMetrics().widthPixels - t.dp(64)) / 3, Math.round(t.dp(100) * grow));
+        // three keys and their margins always fit the width (the screen's padding is 22 dp each side, each key 5 dp each side)
+        int cell = Math.min((getResources().getDisplayMetrics().widthPixels - t.dp(44) - t.dp(30)) / 3, Math.round(t.dp(100) * grow));
         for (String k : new String[]{"1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"}) {
             TextView key = Ui.button(this, t, k, v -> { if (number.length() < 20) number.append(k); show(); });
             Steady.repeatable(key);
-            key.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(30));
+            key.setPadding(0, 0, 0, 0); key.setMinHeight(0); key.setMinimumHeight(0);
+            key.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.min(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, t.btn(30), getResources().getDisplayMetrics()), cell * .74f * .6f));
             android.widget.GridLayout.LayoutParams lp = new android.widget.GridLayout.LayoutParams(); lp.width = cell; lp.height = Math.round(cell * .74f);
             lp.setMargins(t.dp(5), t.dp(5), t.dp(5), t.dp(5));
             g.addView(key, lp);
         }
-        LinearLayout.LayoutParams gp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); gp.gravity = Gravity.CENTER_HORIZONTAL; gp.topMargin = t.sdp(10);
+        LinearLayout.LayoutParams gp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); gp.gravity = Gravity.CENTER_HORIZONTAL; gp.topMargin = t.dp(10);
         col.addView(g, gp);
 
         TextView call = Ui.primary(this, t, "Call", v -> call());
@@ -81,17 +83,17 @@ public class DialActivity extends Activity {
         shown.setText(n.isEmpty() ? "Type a number" : pretty == null ? n : pretty);
         shown.setTextColor(n.isEmpty() ? t.sepia : t.ink);
         shown.setContentDescription(n.isEmpty() ? "No number yet" : "Number: " + n.replaceAll("(.)", "$1 "));
-        msg.setText("");
+        msg.setText(""); msg.setVisibility(android.view.View.GONE);
     }
 
     private void call() {
         String n = number.toString();
-        if (n.isEmpty()) { msg.setText("Type the number first."); return; }
+        if (n.isEmpty()) { msg.setText("Type the number first."); msg.setVisibility(android.view.View.VISIBLE); return; }
         try {
             getSystemService(TelecomManager.class).placeCall(Uri.fromParts("tel", n, null), new Bundle());
             finish();
         } catch (SecurityException e) {
-            msg.setText("Herbarium may not place calls yet (Settings → Calls).");
+            msg.setVisibility(android.view.View.VISIBLE); msg.setText("Herbarium may not place calls yet (Settings → Calls).");
         }
     }
 }

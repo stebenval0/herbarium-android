@@ -51,7 +51,7 @@ final class HomePages {
                     for (Missed.Call m : waiting) {
                         CarePages.Person p = new CarePages.Person(); p.name = m.name; p.number = m.number;
                         String when = CarePages.when(m.at);
-                        View r = CarePages.callRow(a, t, p, "Call back", "Called " + Character.toLowerCase(when.charAt(0)) + when.substring(1) + (m.times > 1 ? " · " + Summary.count(m.times, "time").replace("a time", "once") : ""));
+                        View r = CarePages.callRow(a, t, p, "Call back", "Called " + (when.startsWith("Today") || when.startsWith("Yesterday") ? Character.toLowerCase(when.charAt(0)) + when.substring(1) : when) + (m.times > 1 ? " · " + Summary.count(m.times, "time").replace("a time", "once") : ""));
                         col.addView(r, Ui.wide(t.sdp(8)));
                     }
                 }

@@ -26,7 +26,8 @@ import java.util.Locale;
  * (no swiping). Android's own PIN screen still follows if the phone has a PIN; no app may replace that.
  */
 public class LockActivity extends Activity {
-    private TextView time, date, headline, openButton;
+    private TextView time, date, headline, openButton, wxLine;
+    private View moonView;
     private LinearLayout calls;      // Caretaken mode: calls to return, first thing on picking up the phone
     private View readButton;
     private Theme th;
@@ -61,9 +62,9 @@ public class LockActivity extends Activity {
 
         View moon = new View(this) { @Override protected void onDraw(Canvas c) { Paper.moon(c, getWidth() / 2f, getHeight() / 2f, Math.min(getWidth(), getHeight()) / 2f - t.dp(1), t); } };
         LinearLayout.LayoutParams mp = Ui.lp(t.sdp(30), t.sdp(30)); mp.gravity = Gravity.CENTER_HORIZONTAL;
-        col.addView(moon, mp);
+        col.addView(moon, mp); moonView = moon;
         time = Ui.centered(Ui.text(this, t, "", 108, t.ink, Theme.regular)); time.setLetterSpacing(-.02f);
-        date = Ui.centered(Ui.text(this, t, "", 23, t.sepia, Theme.regular));
+        date = Ui.wholeWords(Ui.centered(Ui.text(this, t, "", 23, t.sepia, Theme.regular)), 14);
         TextView wx = Ui.centered(Ui.caps(this, t, Weather.line(this), 15, t.sepia));
         col.addView(time, Ui.wide(t.sdp(6))); col.addView(date, Ui.wide(t.sdp(4))); col.addView(wx, Ui.wide(t.sdp(10)));
         headline = Ui.text(this, t, "", 21, t.ink, Theme.regular);
@@ -85,7 +86,13 @@ public class LockActivity extends Activity {
             v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), nav + t.dp(24));
             return in;
         });
-        setContentView(col);
+        // big text can make the face taller than the screen: it scrolls, so Call back and Open are always reachable
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setFillViewport(true); scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        scroll.setBackground(col.getBackground()); col.setBackground(null);
+        scroll.addView(col, new android.widget.FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        setContentView(scroll);
+        wxLine = wx;
         warmVoice();
         WindowInsetsController c = getWindow().getInsetsController();
         if (c != null) { c.hide(WindowInsets.Type.statusBars()); c.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE); }
@@ -112,7 +119,12 @@ public class LockActivity extends Activity {
         boolean any = !w.isEmpty();
         headline.setVisibility(any ? View.GONE : View.VISIBLE);           // room for what matters most
         if (readButton != null) readButton.setVisibility(any ? View.GONE : View.VISIBLE);
-        time.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.sp(any ? 64 : 108));
+        time.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.sp(any ? (th.large() ? 40 : 64) : 108));
+        // big text with a call to return: the time stays, the rest steps aside so "Call back" fits on the screen
+        boolean room = any && th.large();
+        if (wxLine != null) wxLine.setVisibility(room ? View.GONE : View.VISIBLE);
+        if (date != null) date.setVisibility(room ? View.GONE : View.VISIBLE);
+        if (moonView != null) moonView.setVisibility(room ? View.GONE : View.VISIBLE);
         // one gold button at a time: with a call to return, Open steps back to an outline
         if (openButton != null && openButton.getParent() instanceof ViewGroup && (openButton.getTag() == null || (boolean) openButton.getTag() != any)) {
             ViewGroup p = (ViewGroup) openButton.getParent(); int at = p.indexOfChild(openButton); ViewGroup.LayoutParams lp = openButton.getLayoutParams();
