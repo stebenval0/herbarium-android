@@ -60,7 +60,7 @@ public class AccessActivity extends Activity {
         if (Care.settingsLocked(this)) { gate(col); setContentView(scroll); return; }
         col.addView(Ui.centered(Ui.caps(this, t, "Settings", 30, t.ink)));
         col.addView(Ui.centered(Ui.text(this, t, "✦ ✦ ✦", 14, t.gold, Theme.regular)), Ui.wide(t.sdp(6)));
-        TextView back = Ui.button(this, t, "▾  Back", v -> finish());
+        TextView back = Ui.button(this, t, "‹ Back", v -> finish());
         LinearLayout.LayoutParams bp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); bp.gravity = Gravity.CENTER_HORIZONTAL; bp.topMargin = t.sdp(10);
         col.addView(back, bp);
 

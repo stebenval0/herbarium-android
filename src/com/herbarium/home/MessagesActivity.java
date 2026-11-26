@@ -53,7 +53,7 @@ public class MessagesActivity extends Activity {
         col.addView(Ui.centered(Ui.caps(this, t, getIntent().getBooleanExtra("helper", false) ? "All messages" : "Messages", 28, t.ink)));
         col.addView(Ui.centered(Ui.text(this, t, "✦ ✦ ✦", 14, t.gold, Theme.regular)), Ui.wide(t.sdp(6)));
         TextView write = Ui.primary(this, t, "Write a message", v -> startActivity(new Intent(this, ThreadActivity.class)));
-        TextView back = Ui.button(this, t, "Back", v -> finish());
+        TextView back = Ui.button(this, t, "‹ Back", v -> finish());
         col.addView(Ui.pair(this, t, write, back), Ui.wide(t.sdp(14)));
         list = Ui.column(this);
         col.addView(list, Ui.wide(t.sdp(8)));

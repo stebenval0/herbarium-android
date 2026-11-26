@@ -149,17 +149,16 @@ final class Missed {
         String who = first(m.name);
         Intent call = new Intent(c, CallBack.class).putExtra("number", m.number);
         PendingIntent tap = PendingIntent.getActivity(c, 1, call, PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        String more = w.size() > 1 ? " (and " + Summary.count(w.size() - 1, "other person") + ")" : "";
+        String more = w.size() > 1 ? " · +" + (w.size() - 1) + " more" : "";
         Notification n = new Notification.Builder(c, CHANNEL)
                 .setSmallIcon(android.R.drawable.sym_call_missed)
-                .setContentTitle("Call " + who + " back")
-                .setContentText(m.name + " called" + (m.times > 1 ? " " + Summary.count(m.times, "time").replace("a time", "once") : "") + more + ". Tap to call.")
-                .setStyle(new Notification.BigTextStyle().bigText(m.name + " called you. Tap here to call " + who + " back."))
+                .setContentTitle("Missed call: " + m.name)
+                .setContentText(ago(m.at) + (m.times > 1 ? " · " + m.times + " calls" : "") + more)
                 .setCategory(Notification.CATEGORY_MISSED_CALL)
                 .setContentIntent(tap).setAutoCancel(false).setOngoing(true)
                 .setOnlyAlertOnce(true)                  // says so once; refreshing it (screen on, new calls) stays quiet
                 .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .addAction(new Notification.Action.Builder(null, "Call " + who + " back", tap).build())
+                .addAction(new Notification.Action.Builder(null, "Call back", tap).build())
                 .build();
         nm.notify(ID, n);
     }
@@ -193,10 +192,13 @@ final class Missed {
         Call m = w.get(0);
         PendingIntent tap = PendingIntent.getActivity(c, 1, new Intent(c, CallBack.class).putExtra("number", m.number), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         nm.notify(QUIET_ID, new Notification.Builder(c, "missed-quiet").setSmallIcon(android.R.drawable.sym_call_missed)
-                .setContentTitle(w.size() == 1 ? m.name + " called" : Summary.capital(Summary.count(w.size(), "missed call")))
-                .setContentText("Tap to call " + first(m.name) + " back.").setCategory(Notification.CATEGORY_MISSED_CALL)
+                .setContentTitle("Missed call" + (w.size() > 1 ? "s" : "") + ": " + m.name + (w.size() > 1 ? " +" + (w.size() - 1) : ""))
+                .setContentText(ago(m.at) + (m.times > 1 ? " · " + m.times + " calls" : "") + " · tap to call back").setCategory(Notification.CATEGORY_MISSED_CALL)
                 .setContentIntent(tap).setAutoCancel(true).setOnlyAlertOnce(true).build());
     }
+
+    /** "5 minutes ago", "Yesterday" */
+    static String ago(long at) { return android.text.format.DateUtils.getRelativeTimeSpanString(at, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS).toString(); }
 
     /** Opened from the notice: calls back at once, then steps aside. */
     public static class CallBack extends Activity {

@@ -192,7 +192,7 @@ final class Shade {
         card.addView(Ui.body(s, t, g.cardLine(), 19), Ui.wide(t.sdp(2)));
         if (!g.cardDetail().isEmpty()) card.addView(Ui.ellipsize(Ui.text(s, t, g.cardDetail(), 16, t.sepia, Theme.regular), 2), Ui.wide(t.sdp(2)));
         TextView open = Ui.button(s, t, g.latest().key.startsWith(Notes.MISSED) ? "Call back" : "Open", v -> { hide(); Notes.open(s, g.latest()); for (Notes.Note x : g.notes) Notes.dismiss(s, x.key); });
-        TextView done = Ui.button(s, t, "Done", v -> { for (Notes.Note x : g.notes) Notes.dismiss(s, x.key); rebuild(); });
+        TextView done = Ui.button(s, t, "Clear", v -> { for (Notes.Note x : g.notes) Notes.dismiss(s, x.key); rebuild(); });
         card.addView(Ui.pair(s, t, open, done), Ui.wide(t.sdp(8)));
         return card;
     }

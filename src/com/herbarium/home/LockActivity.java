@@ -26,7 +26,7 @@ import java.util.Locale;
  * (no swiping). Android's own PIN screen still follows if the phone has a PIN; no app may replace that.
  */
 public class LockActivity extends Activity {
-    private TextView time, date, headline;
+    private TextView time, date, headline, openButton;
     private LinearLayout calls;      // Caretaken mode: calls to return, first thing on picking up the phone
     private View readButton;
     private Theme th;
@@ -76,6 +76,7 @@ public class LockActivity extends Activity {
         readButton = read;
         col.addView(new View(this), new LinearLayout.LayoutParams(1, 0, 1));
         TextView open = Ui.primary(this, t, "Open", v -> unlock());
+        openButton = open;
         open.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.sp(22));
         LinearLayout.LayoutParams op = Ui.wide(); op.leftMargin = op.rightMargin = t.dp(30);
         col.addView(open, op);
@@ -112,6 +113,13 @@ public class LockActivity extends Activity {
         headline.setVisibility(any ? View.GONE : View.VISIBLE);           // room for what matters most
         if (readButton != null) readButton.setVisibility(any ? View.GONE : View.VISIBLE);
         time.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.sp(any ? 64 : 108));
+        // one gold button at a time: with a call to return, Open steps back to an outline
+        if (openButton != null && openButton.getParent() instanceof ViewGroup && (openButton.getTag() == null || (boolean) openButton.getTag() != any)) {
+            ViewGroup p = (ViewGroup) openButton.getParent(); int at = p.indexOfChild(openButton); ViewGroup.LayoutParams lp = openButton.getLayoutParams();
+            TextView o = any ? Ui.button(this, th, "Open", v -> unlock()) : Ui.primary(this, th, "Open", v -> unlock());
+            o.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, th.sp(22)); o.setTag(any);
+            p.removeViewAt(at); p.addView(o, at, lp); openButton = o;
+        }
         for (int i = 0; i < w.size() && i < 2; i++) {
             Missed.Call m = w.get(i);
             String who = Missed.first(m.name);

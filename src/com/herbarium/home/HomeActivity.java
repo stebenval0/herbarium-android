@@ -266,7 +266,7 @@ public class HomeActivity extends Activity {
             tab.setText(names.get(k).toUpperCase(Locale.ROOT)); tab.setLetterSpacing(.06f);
             tab.setMaxLines(1);           // (not setSingleLine: that stops the text from shrinking to fit)
             // every tab fits on one line, however many there are and however large the text
-            tab.setAutoSizeTextTypeUniformWithConfiguration(9, Math.round(Math.min(t.sp(15), 15 * 1.25f)), 1, TypedValue.COMPLEX_UNIT_SP);
+            tab.setAutoSizeTextTypeUniformWithConfiguration(12, Math.round(Math.min(t.sp(15), 15 * 1.25f)), 1, TypedValue.COMPLEX_UNIT_SP);
             final int page = k;
             Steady.tap(tab, t, v -> deck.go(page, true));
             tab.setContentDescription(names.get(k));
@@ -330,7 +330,7 @@ public class HomeActivity extends Activity {
             LinearLayout.LayoutParams cbp = Ui.wide(t.sdp(10)); cbp.leftMargin = cbp.rightMargin = t.dp(20);
             col.addView(careBox, cbp);
             // settings are for the helper: a quiet button that opens only after a 3-second hold (no stray tap gets in)
-            TextView access = Ui.text(this, t, "For helpers: hold for settings", 15, t.sepia, Theme.italic);
+            TextView access = Ui.text(this, t, "For helpers: hold for settings", 16, t.ink, Theme.regular); access.setAlpha(.8f);
             access.setGravity(Gravity.CENTER); access.setMinHeight(t.target(56)); access.setAlpha(.75f);
             access.setContentDescription("Settings, for helpers. Touch and hold for three seconds.");
             final Runnable openSettings = () -> startActivity(new Intent(this, AccessActivity.class));
@@ -630,7 +630,7 @@ public class HomeActivity extends Activity {
         col.addView(Ui.centered(Ui.caps(this, t, "Letters", 30, t.ink)));
         lettersHeadline = Ui.text(this, t, s.styled(t), 19, t.ink, Theme.regular);
         col.addView(lettersHeadline, Ui.wide(t.sdp(8)));
-        TextView back = Ui.button(this, t, "▾  Back", v -> closeSheet());
+        TextView back = Ui.button(this, t, "‹ Back", v -> closeSheet());
         TextView read = Ui.button(this, t, "Read it to me", v -> speak(Summary.of(this).spoken()));
         if (Summary.canSpeak(this)) col.addView(Ui.pair(this, t, back, read), Ui.wide(t.sdp(14)));
         else col.addView(back, Ui.wide(t.sdp(14)));
@@ -648,7 +648,7 @@ public class HomeActivity extends Activity {
 
     private TextView lettersHeadline;
 
-    /** "Done": just this note fades and folds away; the rest stay where they are (no reload). */
+    /** "Clear": just this note fades and folds away; the rest stay where they are (no reload). */
     private void putAway(View card) {
         ViewGroup col = (ViewGroup) card.getParent();
         if (col == null) return;
@@ -689,7 +689,7 @@ public class HomeActivity extends Activity {
         String d = g.cardDetail();
         if (!d.isEmpty()) card.addView(Ui.ellipsize(Ui.text(this, t, d, 18, t.sepia, Theme.regular), 4), Ui.wide(t.sdp(4)));
         TextView open = Ui.button(this, t, g.latest().key.startsWith(Notes.MISSED) ? "Call back" : "Open", v -> { Notes.open(this, n); for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); closeSheet(); });
-        TextView done = Ui.button(this, t, "Done", v -> { for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); putAway(card); });
+        TextView done = Ui.button(this, t, "Clear", v -> { for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); putAway(card); });
         card.addView(Ui.pair(this, t, open, done), Ui.wide(t.sdp(10)));
         return card;
     }
@@ -707,7 +707,7 @@ public class HomeActivity extends Activity {
         bg.execute(() -> { Bitmap b = Engraving.plate(i, pw, t, false); ui.post(() -> img.setImageBitmap(b)); });
         col.addView(Ui.centered(Ui.caps(this, t, c.name, 30, t.ink)), Ui.wide(t.sdp(4)));
         col.addView(Ui.centered(Ui.text(this, t, Engraving.flowerFor(i)[1] + " · " + Engraving.skyFor(i).name, 16, t.sepia, Theme.italic)), Ui.wide(t.sdp(4)));
-        TextView back = Ui.button(this, t, "▾  Back", v -> closeSheet());
+        TextView back = Ui.button(this, t, "‹ Back", v -> closeSheet());
         LinearLayout.LayoutParams bp = Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); bp.gravity = Gravity.CENTER_HORIZONTAL; bp.topMargin = t.sdp(12);
         col.addView(back, bp);
         View rule = Ui.rule(this, t); LinearLayout.LayoutParams rp = Ui.lp(ViewGroup.LayoutParams.MATCH_PARENT, t.dp(1)); rp.setMargins(t.dp(26), t.sdp(14), t.dp(26), t.sdp(6));

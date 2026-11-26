@@ -165,7 +165,7 @@ public class ThreadActivity extends Activity {
         col.addView(find, Ui.wide(t.sdp(14)));
         LinearLayout list = Ui.column(this);
         col.addView(list, Ui.wide(t.sdp(6)));
-        col.addView(Ui.button(this, t, "Back", v -> finish()), Ui.wide(t.sdp(16)));
+        col.addView(Ui.button(this, t, "‹ Back", v -> finish()), Ui.wide(t.sdp(16)));
         final List<CarePages.Person> recent = new ArrayList<>(), everyone = new ArrayList<>();
         Runnable show = () -> {
             list.removeAllViews();

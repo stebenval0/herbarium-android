@@ -62,12 +62,10 @@ public class DialActivity extends Activity {
         TextView call = Ui.primary(this, t, "Call", v -> call());
         call.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.btn(24));
         call.setMinHeight(Math.round(t.dp(92) * (1 + (t.scale - 1) * .35f)));
-        android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable(); gd.setCornerRadius(t.sdp(20)); gd.setColor(t.night ? 0xff6fae86 : 0xff3f7a55);
-        call.setBackground(gd); call.setTextColor(0xfff6f1e2);
         col.addView(call, Ui.wide(t.sdp(16)));
-        TextView del = Ui.button(this, t, "Delete last digit", v -> { if (number.length() > 0) number.setLength(number.length() - 1); show(); });
+        TextView del = Ui.button(this, t, "Delete", v -> { if (number.length() > 0) number.setLength(number.length() - 1); show(); });
         Steady.repeatable(del);
-        TextView back = Ui.button(this, t, "Back", v -> finish());
+        TextView back = Ui.button(this, t, "‹ Back", v -> finish());
         col.addView(Ui.pair(this, t, del, back), Ui.wide(t.sdp(12)));
 
         setContentView(sc);
@@ -80,7 +78,8 @@ public class DialActivity extends Activity {
     private void show() {
         String n = number.toString();
         String pretty = n.length() >= 7 && n.matches("[0-9+]+") ? PhoneNumberUtils.formatNumber(n, "US") : n;
-        shown.setText(n.isEmpty() ? "" : pretty == null ? n : pretty);
+        shown.setText(n.isEmpty() ? "Type a number" : pretty == null ? n : pretty);
+        shown.setTextColor(n.isEmpty() ? t.sepia : t.ink);
         shown.setContentDescription(n.isEmpty() ? "No number yet" : "Number: " + n.replaceAll("(.)", "$1 "));
         msg.setText("");
     }
