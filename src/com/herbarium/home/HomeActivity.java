@@ -54,6 +54,7 @@ public class HomeActivity extends Activity {
     private String themeKey = "";
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final ExecutorService bg = Executors.newSingleThreadExecutor();
+    private final ExecutorService plates = Executors.newSingleThreadExecutor();   // plates never wait behind the call log or the summary
 
     private FrameLayout root, sheet;
     private Deck deck;
@@ -108,9 +109,13 @@ public class HomeActivity extends Activity {
         if (SetupActivity.needed(this)) startActivity(new Intent(this, SetupActivity.class));
     }
 
-    @Override protected void onDestroy() { unregisterReceiver(power); unregisterReceiver(packages); unregisterReceiver(clausus); unregisterReceiver(notes); unregisterReceiver(missed); unregisterReceiver(texts); if (tts != null) tts.shutdown(); bg.shutdown(); super.onDestroy(); }
+    @Override protected void onDestroy() { unregisterReceiver(power); unregisterReceiver(packages); unregisterReceiver(clausus); unregisterReceiver(notes); unregisterReceiver(missed); unregisterReceiver(texts); if (tts != null) tts.shutdown(); bg.shutdown(); plates.shutdown(); super.onDestroy(); }
 
+    // the pull-up pages glide in and settle (Android's own "emphasized" curve), and drop away a little faster
+    private static final android.view.animation.Interpolator SHEET_IN = new android.view.animation.PathInterpolator(.05f, .7f, .1f, 1f),
+            SHEET_OUT = new android.view.animation.PathInterpolator(.3f, 0f, .8f, .15f);
     private TextView callBar;
+    private View settingsButton;
     private final Runnable callCheck = new Runnable() { @Override public void run() {
         if (callBar != null) callBar.setVisibility(InCall.current() != null ? View.VISIBLE : View.GONE);
         ui.postDelayed(this, 1500);
@@ -221,12 +226,14 @@ public class HomeActivity extends Activity {
         callBar.setElevation(t.dp(14)); callBar.setVisibility(View.GONE);
         root.addView(callBar, cbp);
 
-        sheet = new FrameLayout(this); sheet.setVisibility(View.GONE); sheet.setBackgroundColor(t.paperHi); sheet.setElevation(t.dp(12));
+        sheet = new FrameLayout(this); sheet.setVisibility(View.GONE); sheet.setBackgroundColor(t.paperHi);
+        { Bitmap sp = Paper.ready(this, W, H, t); if (sp != null) sheet.setBackground(new android.graphics.drawable.BitmapDrawable(getResources(), sp)); }   // the same paper as everywhere sheet.setElevation(t.dp(12));
         root.addView(sheet, Ui.fill());
 
         setContentView(root);
+        renderSummary();          // first in the queue, so it's in place before the plates fade in (nothing shifts under them)
         loadApps();
-        tickNow(); updateWeather(); updateStrip(); renderSummary(); warmVoice();
+        tickNow(); updateWeather(); updateStrip(); warmVoice();
         if (Care.on(this)) renderCare(); else { nuntius.render(); nuntius.sync(); }
         renderPages();
     }
@@ -390,6 +397,7 @@ public class HomeActivity extends Activity {
         col.addView(results, Ui.wide(t.sdp(8)));
 
         TextView access = Ui.button(this, t, "✦  Settings", v -> startActivity(new Intent(this, AccessActivity.class)));
+        if (chapters.isEmpty()) { grid.setAlpha(0f); access.setAlpha(0f); } settingsButton = access;   // shown with the plates (loadApps)
         LinearLayout.LayoutParams ap = Ui.wide(t.sdp(26)); ap.leftMargin = ap.rightMargin = t.dp(40);
         col.addView(access, ap);
         return col;
@@ -403,7 +411,11 @@ public class HomeActivity extends Activity {
             List<Apps.App> open = new ArrayList<>();
             for (Apps.App x : a) if (!blocked.contains(x.pkg) && State.appAllowed(this, x.pkg)) open.add(x);
             List<Apps.Chapter> ch = Apps.chapters(this, open);
-            ui.post(() -> { apps = a; chapters = ch; renderGrid(); renderResults(); });
+            ui.post(() -> {
+                apps = a; chapters = ch; renderGrid(); renderResults();
+                if (plateViews.isEmpty()) revealGrid();
+                else ui.postDelayed(this::revealGrid, 2500);       // in case the plates are slow: never leave Home half-hidden
+            });
         });
     }
 
@@ -490,10 +502,15 @@ public class HomeActivity extends Activity {
     }
 
     /** Draw the plates off the main thread; reuse today's from disk if they're already drawn. */
+    /** The plates and the Settings button fade in together, once the first row of plates is drawn (no names without pictures). */
+    private void revealGrid() {
+        for (View v : new View[]{grid, settingsButton}) if (v != null && v.getAlpha() < 1f && v.animate() != null) v.animate().alpha(1f).setDuration(240).start();
+    }
+
     private void drawPlates(int w) {
         final Theme th = t; final String k = (th.night ? "n" : "d") + Engraving.dayNumber() + "-" + w + "-" + th.contrast;
         final int n = plateViews.size();
-        bg.execute(() -> {
+        plates.execute(() -> {
             File dir = new File(Theme.cache(this), "plates"); dir.mkdirs();
             for (int i = 0; i < n; i++) {
                 File f = new File(dir, k + "-" + i + ".png");
@@ -503,7 +520,10 @@ public class HomeActivity extends Activity {
                     try (FileOutputStream o = new FileOutputStream(f)) { b.compress(Bitmap.CompressFormat.PNG, 100, o); } catch (Exception ignored) {}
                 }
                 final Bitmap fb = b; final int fi = i;
-                ui.post(() -> { if (fi < plateViews.size()) plateViews.get(fi).setImageBitmap(fb); });
+                ui.post(() -> {
+                    if (fi < plateViews.size()) plateViews.get(fi).setImageBitmap(fb);
+                    if (fi == Math.min(n, 3) - 1) revealGrid();      // the first row is ready
+                });
             }
             File[] old = dir.listFiles();
             if (old != null) for (File f : old) if (!f.getName().startsWith(k)) f.delete();
@@ -528,7 +548,7 @@ public class HomeActivity extends Activity {
         r.addView(label, lp);
         r.setTag(a);
         r.setContentDescription(a.label);
-        Steady.tap(r, t, v -> Apps.launch(this, a));
+        Steady.tap(r, t, v -> Apps.launch(this, a, r));
         return r;
     }
 
@@ -650,7 +670,7 @@ public class HomeActivity extends Activity {
         sheet.addView(sc, Ui.fill());
         sheet.setVisibility(View.VISIBLE);
         sheet.setTranslationY(getResources().getDisplayMetrics().heightPixels);
-        sheet.animate().translationY(0).setDuration(260).setInterpolator(new DecelerateInterpolator(2)).start();
+        sheet.animate().translationY(0).setDuration(320).setInterpolator(SHEET_IN).start();
     }
 
     private TextView lettersHeadline;
@@ -725,11 +745,11 @@ public class HomeActivity extends Activity {
         sheet.addView(sc, Ui.fill());
         sheet.setVisibility(View.VISIBLE);
         sheet.setTranslationY(getResources().getDisplayMetrics().heightPixels);
-        sheet.animate().translationY(0).setDuration(260).setInterpolator(new DecelerateInterpolator(2)).start();
+        sheet.animate().translationY(0).setDuration(320).setInterpolator(SHEET_IN).start();
     }
 
     private void closeSheet() {
-        sheet.animate().translationY(getResources().getDisplayMetrics().heightPixels).setDuration(220)
+        sheet.animate().translationY(getResources().getDisplayMetrics().heightPixels).setDuration(240).setInterpolator(SHEET_OUT)
                 .withEndAction(() -> { sheet.setVisibility(View.GONE); sheet.removeAllViews(); }).start();
     }
 

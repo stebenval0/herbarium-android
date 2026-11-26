@@ -178,7 +178,7 @@ final class HomePages {
         // one tap: the conversation opens with the keyboard up, ready to write
         boolean canReply = !v.addresses.isEmpty() && !v.addresses.get(0).matches(".*[A-Za-z].*");
         TextView reply = canReply ? Ui.button(a, t, v.group ? "Reply to everyone" : "Reply to " + Missed.first(v.name),
-                x -> a.startActivity(new Intent(a, ThreadActivity.class).putExtra("thread", v.thread).putExtra("to", v.addresses.toArray(new String[0])))) : null;
+                x -> a.startActivity(new Intent(a, ThreadActivity.class).putExtra("thread", v.thread).putExtra("to", v.addresses.toArray(new String[0])).putExtra("type", true))) : null;
         // "Done": no reply needed; it steps off this page until they write again
         TextView done = Ui.button(a, t, "Done", x -> {
             putAway(a, v.thread, v.date);

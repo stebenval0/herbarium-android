@@ -29,7 +29,7 @@ public class Guard extends AccessibilityService {
                 if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) new Thread(() -> Missed.notifyWaiting(Guard.this)).start();
                 if (!Intent.ACTION_SCREEN_ON.equals(i.getAction())) return;
             }
-            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) { if (recents != null) recents.hide(); if (shade != null) shade.hide(); }   // nothing left over the call screen or the lock
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) { if (recents != null) recents.hide(); if (shade != null) shade.hideNow(); }   // nothing left over the call screen or the lock
             long wait = Intent.ACTION_SCREEN_OFF.equals(i.getAction()) ? 600 : 0;
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> LockActivity.show(Guard.this), wait);
         }
@@ -82,7 +82,7 @@ public class Guard extends AccessibilityService {
     }
 
     /** A call is coming in or going out: nothing of ours may cover its screen. */
-    static void clearForCall() { Guard g = instance; if (g == null) return; new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> { if (g.shade != null) g.shade.hide(); if (g.recents != null) g.recents.hide(); }); }
+    static void clearForCall() { Guard g = instance; if (g == null) return; new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> { if (g.shade != null) g.shade.hideNow(); if (g.recents != null) g.recents.hide(); }); }
     static void openShade() { Guard g = instance; if (g != null && g.shade != null) g.shade.show(); }
 
     @Override protected void onServiceConnected() {

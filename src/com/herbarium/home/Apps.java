@@ -163,10 +163,16 @@ final class Apps {
         return "Other";
     }
 
-    static void launch(Context c, App a) {
+    static void launch(Context c, App a) { launch(c, a, null); }
+
+    /** Open an app; from a row on screen, it grows out of that row (as Android's own launchers do). */
+    static void launch(Context c, App a, android.view.View from) {
         Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setClassName(a.pkg, a.act).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-        try { c.startActivity(i); }
+        android.os.Bundle opts = null;
+        if (from != null && from.getWidth() > 0)
+            opts = android.app.ActivityOptions.makeClipRevealAnimation(from, 0, 0, from.getWidth(), from.getHeight()).toBundle();
+        try { c.startActivity(i, opts); }
         catch (Exception e) {
             Intent l = c.getPackageManager().getLaunchIntentForPackage(a.pkg);
             if (l != null) c.startActivity(l.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));

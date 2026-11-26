@@ -163,8 +163,14 @@ final class Shade {
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT);
         lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
-        lp.windowAnimations = android.R.style.Animation_Dialog;
-        try { wm.addView(panel, lp); panel.requestFocus(); } catch (Exception e) { panel = null; }
+        lp.windowAnimations = 0;      // it slides down from the top edge itself, like a sheet pulled down
+        try {
+            wm.addView(panel, lp); panel.requestFocus();
+            if (!instant) {
+                panel.setTranslationY(-H);
+                panel.animate().translationY(0).setDuration(300).setInterpolator(new android.view.animation.PathInterpolator(.2f, 0f, 0f, 1f)).start();
+            }
+        } catch (Exception e) { panel = null; }
     }
 
     /** " · 5 of 7" for the stream the volume buttons are changing now. */
@@ -180,8 +186,19 @@ final class Shade {
         catch (Exception e) { try { s.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {} }
     }
 
-    void hide() { if (panel != null) { try { wm.removeView(panel); } catch (Exception ignored) {} panel = null; } }
-    private void rebuild() { hide(); show(); }
+    /** Slide the shade back up (as it came down), then take it away. */
+    void hide() {
+        final FrameLayout p = panel;
+        if (p == null) return;
+        panel = null;
+        p.animate().cancel();
+        p.animate().translationY(-p.getHeight()).setDuration(200).setInterpolator(new android.view.animation.AccelerateInterpolator(1.5f))
+                .withEndAction(() -> { try { wm.removeView(p); } catch (Exception ignored) {} }).start();
+    }
+    /** Gone at once (the screen went off, a call is coming, or the shade is being redrawn). */
+    void hideNow() { if (panel != null) { panel.animate().cancel(); try { wm.removeView(panel); } catch (Exception ignored) {} panel = null; } }
+    private boolean instant;
+    private void rebuild() { hideNow(); instant = true; show(); instant = false; }
 
     private View card(Theme t, Summary.Group g) {
         LinearLayout card = Ui.column(s);

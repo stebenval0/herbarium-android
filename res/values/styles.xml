@@ -6,17 +6,29 @@
         <item name="android:statusBarColor">#00000000</item>
         <item name="android:navigationBarColor">#0c1026</item>
         <item name="android:windowShowWallpaper">false</item>
-        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowAnimationStyle">@style/Herbarium.Pages</item>
         <item name="android:colorAccent">#b8913e</item>
         <item name="android:textCursorDrawable">@null</item>
         <item name="android:windowLightStatusBar">false</item>
         <!-- Herbarium has its own day and night; Android must never darken it on its own (force-dark, dark theme). -->
         <item name="android:forceDarkAllowed">false</item>
     </style>
+    <!-- moving between Herbarium's own pages: the new one rises and fades in over the last, and sinks away on Back -->
+    <style name="Herbarium.Pages">
+        <item name="android:activityOpenEnterAnimation">@anim/page_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/stay</item>
+        <item name="android:activityCloseEnterAnimation">@anim/stay</item>
+        <item name="android:activityCloseExitAnimation">@anim/page_out</item>
+        <item name="android:taskOpenEnterAnimation">@anim/page_in</item>
+        <item name="android:taskOpenExitAnimation">@anim/stay</item>
+        <item name="android:taskCloseEnterAnimation">@anim/stay</item>
+        <item name="android:taskCloseExitAnimation">@anim/page_out</item>
+    </style>
     <!-- calls: no starting screen at all (no icon flash), the window already dark like the call screen's night paper -->
     <style name="Herbarium.Call" parent="Herbarium">
         <item name="android:windowSplashScreenBackground">#161c38</item>
         <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
         <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
     </style>
 </resources>

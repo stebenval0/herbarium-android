@@ -363,7 +363,10 @@ final class Texts {
         if (sub >= 0) v.put("sub_id", sub);     // which SIM it went from: other texting apps filter by this, so they'd hide it otherwise
         Uri u;
         try { u = c.getContentResolver().insert(Telephony.Sms.CONTENT_URI, v); }
-        catch (Exception e) { v.remove("sub_id"); u = c.getContentResolver().insert(Telephony.Sms.CONTENT_URI, v); }
+        catch (Exception e) {
+            v.remove("sub_id");
+            try { u = c.getContentResolver().insert(Telephony.Sms.CONTENT_URI, v); } catch (Exception again) { return null; }   // the caller shows it as not sent
+        }
         if (u == null) return null;
         changed(c);
         SmsManager m = sms(c, -1);

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A Herbarium page leaving: it sinks a little and fades away. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android" android:shareInterpolator="true"
+    android:interpolator="@android:interpolator/fast_out_linear_in" android:duration="200">
+    <alpha android:fromAlpha="1" android:toAlpha="0"/>
+    <translate android:fromYDelta="0" android:toYDelta="4%"/>
+</set>

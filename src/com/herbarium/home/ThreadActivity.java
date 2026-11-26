@@ -281,7 +281,8 @@ public class ThreadActivity extends Activity {
             stickUntil = android.os.SystemClock.uptimeMillis() + 4000;
             sc.post(() -> { sc.scrollTo(0, col.getHeight()); col.setAlpha(1f); });
         }
-        if (toEnd) readyToType();
+        // the keyboard comes up for "Reply", a new conversation, or a reply typed into a notice; just reading leaves it down
+        if (toEnd && (list.isEmpty() || getIntent().getBooleanExtra("type", false) || getIntent().hasExtra("sms_body"))) readyToType();
     }
 
     private void render(List<Texts.Msg> list) {
@@ -384,9 +385,14 @@ public class ThreadActivity extends Activity {
         box.setText("");
         List<String> to = new ArrayList<>(addresses);
         bg.execute(() -> {
-            if (to.size() > 1) MmsWork.sendText(getApplicationContext(), to, words);
-            else Texts.send(getApplicationContext(), to.get(0), words);
-            ui.post(() -> load(true));
+            Object went = to.size() > 1 ? MmsWork.sendText(getApplicationContext(), to, words) : Texts.send(getApplicationContext(), to.get(0), words);
+            ui.post(() -> {
+                if (went == null && box.getText().length() == 0) {     // never lose the words: they go back in the box
+                    box.setText(words); box.setSelection(words.length());
+                    android.widget.Toast.makeText(this, "That didn't send. Try again.", android.widget.Toast.LENGTH_LONG).show();
+                }
+                load(true);
+            });
         });
     }
 
