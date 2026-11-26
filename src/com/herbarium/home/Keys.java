@@ -59,8 +59,12 @@ public class Keys extends InputMethodService {
     static boolean canHear(android.content.Context c) { return true; }   // Herbarium's own ear works on every phone
 
     /** Herbarium's own offline ear when the phone has no voice service (or when told to use it, for testing). */
+    /** The phone's own speech service failed (no internet, a broken service): Herbarium's offline ear takes over until restart. */
+    static volatile boolean useOwnEar;
+
     static boolean ownEar(android.content.Context c) {
         if (Theme.prefs(c).getString("ear", "auto").equals("own")) return true;
+        if (useOwnEar && OwnEar.ready(c)) return true;
         return !SpeechRecognizer.isRecognitionAvailable(c) && !(android.os.Build.VERSION.SDK_INT >= 33 && SpeechRecognizer.isOnDeviceRecognitionAvailable(c));
     }
 
@@ -440,7 +444,9 @@ public class Keys extends InputMethodService {
                 case SpeechRecognizer.ERROR_NO_MATCH: case SpeechRecognizer.ERROR_SPEECH_TIMEOUT:
                     say("I didn't catch that. Tap the circle and try again.", false); break;
                 case SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS: listen(); break;
-                case SpeechRecognizer.ERROR_NETWORK: case SpeechRecognizer.ERROR_NETWORK_TIMEOUT:
+                case SpeechRecognizer.ERROR_NETWORK: case SpeechRecognizer.ERROR_NETWORK_TIMEOUT: case SpeechRecognizer.ERROR_SERVER:
+                case 11 /* ERROR_SERVER_DISCONNECTED */: case 12 /* ERROR_LANGUAGE_NOT_SUPPORTED */: case 13 /* ERROR_LANGUAGE_UNAVAILABLE */:
+                    if (OwnEar.ready(Keys.this)) { useOwnEar = true; listen(); break; }     // Herbarium's own (offline) ear carries on
                     say("Voice typing needs the internet just now. Tap Letters to type.", false); break;
                 default: say("Voice typing stopped. Tap the circle to try again.", false);
             }

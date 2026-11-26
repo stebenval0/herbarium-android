@@ -49,6 +49,11 @@ public class InCall extends InCallService {
         synchronized (calls) { calls.add(c); }
         c.registerCallback(cb);
         Guard.clearForCall();
+        try {      // an emergency number going out: every call rings for the next hour (they may call back from any number)
+            android.net.Uri hd = c.getDetails().getHandle();
+            android.telephony.TelephonyManager tm = getSystemService(android.telephony.TelephonyManager.class);
+            if (c.getDetails().getCallDirection() == Call.Details.DIRECTION_OUTGOING && hd != null && tm != null && tm.isEmergencyNumber(hd.getSchemeSpecificPart())) Calls.emergencyDialled(this);
+        } catch (Exception ignored) {}
         show();
         changed();
     }

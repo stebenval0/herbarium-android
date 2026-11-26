@@ -68,7 +68,7 @@ final class Calls {
         android.os.UserManager um = c.getSystemService(android.os.UserManager.class);
         if (um != null && !um.isUserUnlocked()) return false;
         try (Cursor cur = c.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, new String[]{ContactsContract.Contacts._ID}, null, null, null)) {
-            return cur != null;
+            return cur != null && cur.getCount() > 0;      // no contacts yet (a new phone): nobody can be told apart, so everyone rings
         } catch (Exception e) { return false; }
     }
 
@@ -108,7 +108,12 @@ final class Calls {
     }
 
     /** Within an hour of calling emergency services, every call rings: they may be calling back from any number. */
+    /** Herbarium saw an emergency number dialled (some phones never log it). */
+    static void emergencyDialled(Context c) { Theme.prefs(c).edit().putLong("emergencyAt", System.currentTimeMillis()).apply(); }
+
     static boolean afterEmergencyCall(Context c) {
+        long at = Theme.prefs(c).getLong("emergencyAt", 0), ago = System.currentTimeMillis() - at;
+        if (ago >= 0 && ago < 60 * 60_000L) return true;
         if (c.checkSelfPermission(Manifest.permission.READ_CALL_LOG) != PackageManager.PERMISSION_GRANTED) return false;
         android.telephony.TelephonyManager tm = c.getSystemService(android.telephony.TelephonyManager.class);
         long since = System.currentTimeMillis() - 60 * 60_000L;

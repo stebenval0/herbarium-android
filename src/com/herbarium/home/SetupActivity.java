@@ -263,7 +263,7 @@ public class SetupActivity extends Activity {
         l.add(new Item("texts", "Texts", !care ? false : true, () -> Texts.isDefault(a) || p.getBoolean("skip_texts", false)));
         l.add(new Item("keyboard", "Keyboard and voice", care, () -> (Keys.isDefault(a) && granted(a, Manifest.permission.RECORD_AUDIO) && (!Keys.ownEar(a) || OwnEar.ready(a)))
                 || p.getBoolean("skip_keyboard", false)));
-        l.add(new Item("notes", "Notifications", false, () -> Notes.enabled(a) || p.getBoolean("skip_notes", false)));
+        l.add(new Item("notes", "Notifications", care, () -> Notes.enabled(a) || p.getBoolean("skip_notes", false)));
         l.add(new Item("guard", care ? "Protection" : "Protection (optional)", care, () -> (State.guardOn(a) && State.adminOn(a)) || p.getBoolean("skip_guard", false)));
         if (care) l.add(new Item("ringer", "Calls always ring", true, () -> { NotificationManager nm = a.getSystemService(NotificationManager.class); return nm != null && nm.isNotificationPolicyAccessGranted(); }));
         l.add(new Item("battery", "Always awake for calls", true, () -> { PowerManager pm = a.getSystemService(PowerManager.class); return pm != null && pm.isIgnoringBatteryOptimizations(a.getPackageName()); }));
@@ -303,7 +303,8 @@ public class SetupActivity extends Activity {
         // the way on: "Next" once it's done; otherwise the page's own button leads, with a quieter way past
         if (!it.id.equals("pin") && !it.id.equals("name") && !it.id.equals("size")) {
             if (done) col.addView(Ui.primary(this, t, "Next", v -> next()), Ui.wide(t.sdp(22)));
-            else col.addView(Ui.button(this, t, it.needed ? "Do this later" : "Skip this", v -> skip(it)), Ui.wide(t.sdp(22)));
+            else if (!(it.id.equals("unlock") && Care.on(this)))      // Caretaken: the switches it unlocks protect the person, so no way past
+                col.addView(Ui.button(this, t, it.needed ? "Do this later" : "Skip this", v -> skip(it)), Ui.wide(t.sdp(22)));
         }
         if (item > 0) col.addView(Ui.button(this, t, "Back", v -> { item--; show(); }), Ui.wide(t.sdp(10)));
     }
@@ -450,13 +451,19 @@ public class SetupActivity extends Activity {
         List<CarePages.Person> all = CarePages.people(this, false);
         if (all.isEmpty()) {     // a new phone often has no contacts yet: add them right here
             small(col, "There are no contacts yet. Add the important people one by one; each comes back here.");
-            col.addView(Ui.primary(this, t, "Add a person", v -> startActivity(new Intent(Intent.ACTION_INSERT).setType(ContactsContract.Contacts.CONTENT_TYPE).putExtra("finishActivityOnSaveCompleted", true))), Ui.wide(t.sdp(14)));
+            col.addView(Ui.primary(this, t, "Add a person", v -> addContact()), Ui.wide(t.sdp(14)));
         }
         for (CarePages.Person x : all) {
             boolean on = chosen.contains(x.name);
             col.addView(Ui.toggle(this, t, x.name, null, on, v -> { star(x.name, !on); show(); }), Ui.wide(t.sdp(4)));
         }
-        if (!all.isEmpty()) col.addView(Ui.button(this, t, "Add someone to the contacts", v -> startActivity(new Intent(Intent.ACTION_INSERT).setType(ContactsContract.Contacts.CONTENT_TYPE).putExtra("finishActivityOnSaveCompleted", true))), Ui.wide(t.sdp(14)));
+        if (!all.isEmpty()) col.addView(Ui.button(this, t, "Add someone to the contacts", v -> addContact()), Ui.wide(t.sdp(14)));
+    }
+
+    /** Android's "new contact" page; a phone without a contacts app gets Herbarium's own list of numbers instead. */
+    private void addContact() {
+        try { startActivity(new Intent(Intent.ACTION_INSERT).setType(ContactsContract.Contacts.CONTENT_TYPE).putExtra("finishActivityOnSaveCompleted", true)); }
+        catch (Exception e) { android.widget.Toast.makeText(this, "This phone has no contacts app. Add numbers later in Settings → Calls → Add a number.", android.widget.Toast.LENGTH_LONG).show(); }
     }
 
     private void star(String name, boolean on) {

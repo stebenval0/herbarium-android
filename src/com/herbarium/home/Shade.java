@@ -132,8 +132,8 @@ final class Shade {
         // The level shows on the button itself (Android's own volume slider never pops up)
         String level = volumeLevel(am);
         TextView softer = Steady.repeatable(ctl(t, "Softer", false, null)), louder = Steady.repeatable(ctl(t, "Louder" + level, false, null));
-        Steady.tap(softer, t, v -> { VolumeCard.step(am, false); louder.setText("Louder" + volumeLevel(am)); });
-        Steady.tap(louder, t, v -> { VolumeCard.step(am, true); louder.setText("Louder" + volumeLevel(am)); });
+        Steady.tap(softer, t, v -> { VolumeCard.step(s, am, false); louder.setText("Louder" + volumeLevel(am)); });
+        Steady.tap(louder, t, v -> { VolumeCard.step(s, am, true); louder.setText("Louder" + volumeLevel(am)); });
         addPair(grid, t, softer, louder);
         if (!locked && helpersOnly) grid.addView(ctl(t, "Home", false, v -> { hide(); s.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); }), Ui.wide(t.dp(10)));
         else if (!locked) addPair(grid, t,

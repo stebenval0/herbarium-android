@@ -108,7 +108,7 @@ public class CallActivity extends Activity {
         col.removeAllViews();
         String name = who(this, call);
         boolean incoming = st == Call.STATE_RINGING;
-        if (st == Call.STATE_ACTIVE && !spk) earOn(); else earOff();
+        if (st == Call.STATE_ACTIVE) earOn(); else earOff();   // even on the speaker: a cheek must never press Hang up
 
         TextView status = Ui.centered(Ui.text(this, t, statusLine(call, st), 20, t.sepia, Theme.regular));
         status.setTag("status");

@@ -27,6 +27,7 @@ public class DialActivity extends Activity {
         getWindow().setDecorFitsSystemWindows(false);
         getWindow().getAttributes().layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS;
         t = Theme.get(this);
+        if (getIntent().getBooleanExtra("emergency", false)) setShowWhenLocked(true);    // reachable from the lock screen, number already typed
         Uri data = getIntent().getData();
         if (data != null && "tel".equals(data.getScheme())) number.append(data.getSchemeSpecificPart().replaceAll("[^0-9+*#]", ""));
 
@@ -84,6 +85,27 @@ public class DialActivity extends Activity {
         shown.setTextColor(n.isEmpty() ? t.sepia : t.ink);
         shown.setContentDescription(n.isEmpty() ? "No number yet" : "Number: " + n.replaceAll("(.)", "$1 "));
         msg.setText(""); msg.setVisibility(android.view.View.GONE);
+    }
+
+    /** The local emergency number. */
+    static String emergencyNumber(android.content.Context c) {
+        android.telephony.TelephonyManager tm = c.getSystemService(android.telephony.TelephonyManager.class);
+        String iso = tm == null ? "" : tm.getNetworkCountryIso();
+        if (iso == null || iso.isEmpty()) iso = java.util.Locale.getDefault().getCountry();
+        iso = iso.toLowerCase(java.util.Locale.ROOT);
+        return iso.equals("us") || iso.equals("ca") || iso.isEmpty() ? "911" : iso.equals("gb") ? "999" : iso.equals("au") ? "000" : "112";
+    }
+
+    /** The dial pad with the emergency number typed in: one more tap (Call) rings it, so a pocket can't. */
+    static void emergency(android.content.Context c) {
+        try { c.startActivity(new android.content.Intent(c, DialActivity.class).setData(Uri.fromParts("tel", emergencyNumber(c), null)).putExtra("emergency", true).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); }
+        catch (Exception ignored) {}
+    }
+
+    /** Ring the voicemail box. */
+    static void voicemail(android.content.Context c) {
+        try { c.getSystemService(TelecomManager.class).placeCall(Uri.fromParts("voicemail", "", null), new Bundle()); }
+        catch (Exception e) { try { c.startActivity(new android.content.Intent(android.content.Intent.ACTION_CALL, Uri.fromParts("voicemail", "", null)).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {} }
     }
 
     private void call() {

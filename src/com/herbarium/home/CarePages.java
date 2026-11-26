@@ -38,6 +38,11 @@ final class CarePages {
     /** The same, with the call log and contacts already read (off the main thread). */
     static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav) {
         box.removeAllViews();
+        // things that stop calls coming in, said plainly (the person can't fix them; a helper can)
+        if (android.provider.Settings.Global.getInt(a.getContentResolver(), android.provider.Settings.Global.AIRPLANE_MODE_ON, 0) == 1)
+            box.addView(warning(a, t, "Airplane mode is on. Calls can't come in.", "Ask a helper to turn it off."), Ui.wide(t.sdp(10)));
+        if (Guard.instance == null)
+            box.addView(warning(a, t, "Ask a helper: Herbarium's protection is off.", "Settings → Accessibility → Herbarium: switch it off and on again."), Ui.wide(t.sdp(10)));
         if (!waiting.isEmpty()) {
             box.addView(Ui.heading(a, t, waiting.size() == 1 ? "Someone called you" : "People who called you"));
             for (Missed.Call m : waiting) box.addView(missedCard(a, t, m, refresh), Ui.wide(t.sdp(10)));
@@ -67,6 +72,23 @@ final class CarePages {
         box.addView(phone, Ui.wide(t.sdp(4)));
         box.addView(msgs, Ui.wide(t.sdp(10)));
         box.addView(people, Ui.wide(t.sdp(10)));
+        TextView vm = tile(a, t, "Voicemail", "Listen to messages people left", v -> DialActivity.voicemail(a));
+        box.addView(vm, Ui.wide(t.sdp(10)));
+        TextView sos = tile(a, t, "Emergency call (" + DialActivity.emergencyNumber(a) + ")", "Opens the number pad with the emergency number typed in", v -> DialActivity.emergency(a));
+        sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e);
+        box.addView(sos, Ui.wide(t.sdp(18)));
+    }
+
+    /** A plain warning card: what's wrong, and what to do. */
+    private static View warning(Activity a, Theme t, String what, String fix) {
+        LinearLayout card = Ui.column(a);
+        card.setPadding(t.dp(18), t.sdp(14), t.dp(18), t.sdp(14));
+        GradientDrawable g = new GradientDrawable(); g.setCornerRadius(t.sdp(16));
+        g.setColor(t.night ? 0x44c96a55 : 0x33c96a55); g.setStroke(t.dp(2), t.night ? 0xffe8907a : 0xff9c3b2e);
+        card.setBackground(g);
+        card.addView(Ui.text(a, t, what, 21, t.ink, Theme.semi));
+        card.addView(Ui.text(a, t, fix, 17, t.sepia, Theme.regular), Ui.wide(t.sdp(6)));
+        return card;
     }
 
     /** A call to return: who, when, and the biggest button on the screen. */

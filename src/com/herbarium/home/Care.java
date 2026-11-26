@@ -97,10 +97,13 @@ final class Care {
     private static long lastCheck;
 
     /** Calls must be heard: ringer on (not silent or vibrate), loud, and no Do Not Disturb. Cheap to call often. */
-    static void keepRinging(Context c) {
+    static void keepRinging(Context c) { keepRinging(c, false); }
+
+    /** `now`: a call is coming in, check whatever the time since the last check. */
+    static void keepRinging(Context c, boolean now0) {
         if (!on(c)) return;
         long now = SystemClock.elapsedRealtime();
-        if (now - lastCheck < 15_000) return;
+        if (!now0 && now - lastCheck < 15_000) return;
         lastCheck = now;
         try {
             NotificationManager nm = c.getSystemService(NotificationManager.class);

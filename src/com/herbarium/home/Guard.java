@@ -26,7 +26,7 @@ public class Guard extends AccessibilityService {
             // the phone locks a moment after the screen goes off; show Herbarium's face so it's ready when it comes back on
             if (Intent.ACTION_SCREEN_ON.equals(i.getAction()) || android.media.AudioManager.RINGER_MODE_CHANGED_ACTION.equals(i.getAction())) {
                 Care.keepRinging(Guard.this);                // Caretaken: calls must be heard
-                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) new Thread(() -> Missed.notifyWaiting(Guard.this)).start();
+                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) { new Thread(() -> Missed.notifyWaiting(Guard.this)).start(); Updater.dailyCheck(Guard.this); }
                 if (!Intent.ACTION_SCREEN_ON.equals(i.getAction())) return;
             }
             if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) { if (recents != null) recents.hide(); if (shade != null) shade.hideNow(); }   // nothing left over the call screen or the lock
@@ -124,6 +124,7 @@ public class Guard extends AccessibilityService {
             // events can arrive out of order when windows change together, so after any change look at what is really on top
             // (only needed while the Recent page is up or the switcher has just opened: no looking at other windows otherwise)
             if (recents.showing() || SystemClock.elapsedRealtime() - switcherAt < 2000) { main.removeCallbacks(switcherCheck); main.postDelayed(switcherCheck, 120); }
+            if (Recents.isSwitcher(cls) && Care.on(this)) { performGlobalAction(GLOBAL_ACTION_HOME); return; }   // Caretaken: no app switcher, just Home
             if (Recents.isSwitcher(cls)) {
                 switcherPkg = pkg; switcherAt = SystemClock.elapsedRealtime(); recents.switcherPkg = pkg;
                 if (recentsWanted()) recents.show();
@@ -203,7 +204,7 @@ public class Guard extends AccessibilityService {
         if (e.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
         if (am == null) return false;
-        VolumeCard.step(am, k == android.view.KeyEvent.KEYCODE_VOLUME_UP);
+        VolumeCard.step(this, am, k == android.view.KeyEvent.KEYCODE_VOLUME_UP);
         VolumeCard.show(this, am);
         return true;
     }

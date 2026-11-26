@@ -43,12 +43,14 @@ final class VolumeCard {
     }
 
     /** One step softer or louder. Never down to silent (that's what "Quiet" is for), and a muted stream is unmuted first. */
-    static void step(AudioManager am, boolean up) {
+    static void step(android.content.Context c, AudioManager am, boolean up) {
         if (am == null) return;
         int st = stream(am);
         try {
             if (up && am.isStreamMute(st)) am.adjustStreamVolume(st, AudioManager.ADJUST_UNMUTE, 0);
             if (!up && am.getStreamVolume(st) <= 1) return;
+            // Caretaken: the ringer never goes below about 60% (calls must be heard)
+            if (!up && st == AudioManager.STREAM_RING && Care.on(c) && am.getStreamVolume(st) <= Math.round(am.getStreamMaxVolume(st) * .6f)) return;
             am.adjustStreamVolume(st, up ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 0);
             if (up && am.getStreamVolume(st) == 0) am.setStreamVolume(st, 1, 0);
         } catch (Exception ignored) {}     // Do Not Disturb can refuse ringer changes

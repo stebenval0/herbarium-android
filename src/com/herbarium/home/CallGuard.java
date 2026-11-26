@@ -7,6 +7,7 @@ import android.telecom.CallScreeningService;
 /** Android asks this about each incoming call from a number that isn't in the contacts; see Calls for the rules. */
 public class CallGuard extends CallScreeningService {
     @Override public void onScreenCall(Call.Details d) {
+        Care.keepRinging(this, true);      // Caretaken: loud before Android starts ringing
         if (d.getCallDirection() != Call.Details.DIRECTION_INCOMING) { respondToCall(d, new CallResponse.Builder().build()); return; }
         Uri h = d.getHandle();
         String number = h == null ? "" : h.getSchemeSpecificPart();

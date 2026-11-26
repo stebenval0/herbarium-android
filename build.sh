@@ -17,7 +17,7 @@ java -cp "build/checks:build/classes:$JAR" com.herbarium.home.Checks
 "$BT/d8" --min-api 29 --lib "$JAR" --output build/dex $(find build/classes -name '*.class') libs/vosk/classes.jar libs/jna/classes.jar
 cp build/base.apk build/unsigned.apk
 (cd build/dex && zip -q -j ../unsigned.apk classes*.dex)
-for abi in arm64-v8a x86_64; do     # 64-bit phones, and the x86_64 emulator
+for abi in arm64-v8a armeabi-v7a x86_64; do     # 64-bit phones, 32-bit-only budget phones, and the x86_64 emulator
   mkdir -p build/lib/$abi; cp libs/vosk/jni/$abi/libvosk.so libs/jna/jni/$abi/libjnidispatch.so build/lib/$abi/
 done
 (cd build && zip -q -r unsigned.apk lib)

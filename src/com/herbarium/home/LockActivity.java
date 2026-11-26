@@ -81,6 +81,12 @@ public class LockActivity extends Activity {
         open.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, t.sp(22));
         LinearLayout.LayoutParams op = Ui.wide(); op.leftMargin = op.rightMargin = t.dp(30);
         col.addView(open, op);
+        if (Care.on(this)) {      // as Android's own lock screen does: an emergency call without unlocking
+            TextView sos = Ui.button(this, t, "Emergency call", v -> DialActivity.emergency(this));
+            sos.setTextColor(t.night ? 0xffe8907a : 0xff9c3b2e);
+            LinearLayout.LayoutParams ep = Ui.wide(t.sdp(12)); ep.leftMargin = ep.rightMargin = t.dp(60);
+            col.addView(sos, ep);
+        }
         col.setOnApplyWindowInsetsListener((v, in) -> {
             int nav = in.getInsets(WindowInsets.Type.navigationBars()).bottom;
             v.setPadding(v.getPaddingLeft(), v.getPaddingTop(), v.getPaddingRight(), nav + t.dp(24));
