@@ -20,6 +20,7 @@ final class Ui {
         TextView v = new TextView(c);
         v.setText(s); v.setTextSize(TypedValue.COMPLEX_UNIT_SP, t.sp(sp)); v.setTextColor(color); v.setTypeface(face);
         v.setIncludeFontPadding(false); v.setLineSpacing(0, 1.18f);
+        v.setHyphenationFrequency(android.text.Layout.HYPHENATION_FREQUENCY_NONE);   // lines break between words, never inside one ("Go / ogle")
         return v;
     }
     static TextView body(Context c, Theme t, CharSequence s, float sp) { return text(c, t, s, sp, t.ink, Theme.regular); }

@@ -19,7 +19,7 @@ final class Theme {
     final boolean steady;       // steadier tapping (on by default)
     final boolean contrast;     // stronger contrast
     /** How solid the shade's paper is: a little of what's underneath shows through. */
-    static final float VEIL = .97f;
+    static final float VEIL = 1f;    // solid: anything showing through made the shade harder to read
     private final float density;
     static Typeface regular, italic, semi, bold;
 

@@ -94,10 +94,12 @@ public class Notes extends NotificationListenerService {
         c.sendBroadcast(new Intent(CHANGED).setPackage(c.getPackageName()));
     }
     static synchronized void dismiss(Context c, String key) {
+        if (key.startsWith(MISSED)) { Missed.aside(c, key.substring(MISSED.length())); return; }   // a missed call: put aside until they ring again
         List<Note> l = all(c); l.removeIf(n -> n.key.equals(key)); save(c, l); OPEN.remove(key);
         Notes s = instance; if (s != null) try { s.cancelNotification(key); } catch (Exception ignored) {}
     }
     static synchronized void clearAll(Context c) {
+        if (!Care.on(c)) for (Missed.Call m : Missed.waiting(c, true)) Missed.aside(c, m.number);   // (Caretaken keeps calls to return until they're returned)
         List<Note> keep = new ArrayList<>(); save(c, keep); OPEN.clear();
         Notes s = instance; if (s != null) try { s.cancelAllNotifications(); } catch (Exception ignored) {}
     }
@@ -116,7 +118,11 @@ public class Notes extends NotificationListenerService {
     }
 
     /** Open what a notification points to (or just its app, if Herbarium was restarted since). */
+    /** Missed calls ride along in the summary as notes with this key prefix (Herbarium's own notices aren't held). */
+    static final String MISSED = "missed:";
+
     static void open(Context c, Note n) {
+        if (n.key.startsWith(MISSED)) { Missed.callBack(c, n.key.substring(MISSED.length())); return; }
         PendingIntent pi = OPEN.get(n.key);
         if (send(c, pi)) { dismiss(c, n.key); return; }
         Intent i = c.getPackageManager().getLaunchIntentForPackage(n.pkg);

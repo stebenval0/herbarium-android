@@ -129,7 +129,7 @@ final class Missed {
     static void callBack(Activity a, String number) { callBack((Context) a, number); }
 
     // ------------------------------------------------------------------ the notice in Android's own list
-    private static final String CHANNEL = "callbacks";
+    private static final String CHANNEL = "callbacks-2";   // no pop-up banner: Home and the lock screen already lead with the call
     private static final int ID = 7101, QUIET_ID = 7102;   // Caretaken's "Call X back"; normal mode's "X called"
 
     /** One big notice for whoever's waiting ("Call Sam back"), tapping it calls; gone once nobody is. */
@@ -139,8 +139,9 @@ final class Missed {
         List<Call> w = Care.on(c) ? waiting(c) : new ArrayList<>();
         if (w.isEmpty()) { nm.cancel(ID); return; }
         if (InCall.current() != null) return;      // never over a call that's ringing or going on (it's updated after)
+        if (nm.getNotificationChannel("callbacks") != null) nm.deleteNotificationChannel("callbacks");   // the old one popped a stock banner over Home
         if (nm.getNotificationChannel(CHANNEL) == null) {
-            NotificationChannel ch = new NotificationChannel(CHANNEL, "Calls to return", NotificationManager.IMPORTANCE_HIGH);
+            NotificationChannel ch = new NotificationChannel(CHANNEL, "Calls to return", NotificationManager.IMPORTANCE_DEFAULT);
             ch.setDescription("Someone called and is waiting for a call back."); ch.setShowBadge(true);
             nm.createNotificationChannel(ch);
         }

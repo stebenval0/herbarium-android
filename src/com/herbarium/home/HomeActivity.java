@@ -688,7 +688,7 @@ public class HomeActivity extends Activity {
         card.addView(Ui.body(this, t, g.cardLine(), 21), Ui.wide(t.sdp(4)));
         String d = g.cardDetail();
         if (!d.isEmpty()) card.addView(Ui.ellipsize(Ui.text(this, t, d, 18, t.sepia, Theme.regular), 4), Ui.wide(t.sdp(4)));
-        TextView open = Ui.button(this, t, "Open", v -> { Notes.open(this, n); for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); closeSheet(); });
+        TextView open = Ui.button(this, t, g.latest().key.startsWith(Notes.MISSED) ? "Call back" : "Open", v -> { Notes.open(this, n); for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); closeSheet(); });
         TextView done = Ui.button(this, t, "Done", v -> { for (Notes.Note x : g.notes) Notes.dismiss(this, x.key); putAway(card); });
         card.addView(Ui.pair(this, t, open, done), Ui.wide(t.sdp(10)));
         return card;
@@ -767,7 +767,7 @@ public class HomeActivity extends Activity {
     private void renderWeatherPage() {
         weatherPage.removeAllViews();
         JSONObject j = Weather.cached(this), cur = j.optJSONObject("current");
-        weatherPage.addView(Ui.centered(Ui.caps(this, t, "In Flore", 30, t.ink)));
+        weatherPage.addView(Ui.centered(Ui.caps(this, t, "Weather", 30, t.ink)));
         weatherPage.addView(Ui.centered(Ui.text(this, t, Weather.place(this), 17, t.sepia, Theme.italic)), Ui.wide(t.sdp(4)));
         if (cur == null) { weatherPage.addView(Ui.centered(Ui.text(this, t, "Looking at the sky…", 19, t.sepia, Theme.regular)), Ui.wide(t.sdp(30))); return; }
         LinearLayout now = Ui.row(this); now.setGravity(Gravity.CENTER);
@@ -865,7 +865,7 @@ public class HomeActivity extends Activity {
             float x = -margin - page * pageW + offset;
             float min = pageW - board.getLayoutParams().width;
             board.setTranslationX(Math.max(min, Math.min(0, x)));
-            tabsFollow(position());
+            if (deck == this) tabsFollow(position());   // an old sheet (before a rebuild) never colours the new tabs
         }
 
         private void layers(boolean on) { /* moving one view's transform needs no extra layers */ }
@@ -878,7 +878,7 @@ public class HomeActivity extends Activity {
             int w = getWidth(); int was = page; page = Math.max(0, Math.min(pages.size() - 1, p));
             // keep the sheet exactly where the finger left it: the same place, measured from the new page
             float start = offset + (page - was) * w; offset = start;
-            tabColours(page);
+            if (deck == this) tabColours(page);
             if (!anim || w == 0) { offset = 0; layoutPages(); layers(false); settled(); return; }
             final float distance = Math.abs(start), dir = start > 0 ? -1 : 1;   // the sheet travels toward rest (offset 0)
             // the finger's speed along the way it's going (px/ms; a flick the other way carries nothing), then the glide (Motion)
@@ -900,7 +900,7 @@ public class HomeActivity extends Activity {
         private final android.view.animation.PathInterpolator calm = new android.view.animation.PathInterpolator(.33f, 0f, .2f, 1f);
 
         /** Work that waits until a page has settled, so it never stutters the glide. */
-        private void settled() { showTab(page); }
+        private void settled() { if (deck == this) showTab(page); }
 
         @Override public boolean onInterceptTouchEvent(MotionEvent e) {
             // the page follows almost at once (a sticky start felt like nothing was happening); a trembling finger

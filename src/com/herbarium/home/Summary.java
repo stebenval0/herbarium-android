@@ -36,7 +36,7 @@ final class Summary {
         String line() {
             Notes.Note n = latest();
             if (n.call) return (n.title.isEmpty() ? "A call" : n.title) + (n.text.isEmpty() ? "" : " · " + n.text);
-            if (person) return title + " · " + count(notes.size(), "message");
+            if (person) return title + (notes.size() > 1 ? " (" + notes.size() + ")" : "");
             return title + (notes.size() > 1 ? " · " + notes.size() : "");
         }
         /** The words to show under the line. */
@@ -75,7 +75,16 @@ final class Summary {
 
     static Summary of(Context c) {
         Set<String> blocked = State.locked(c) ? State.packages(c) : new java.util.HashSet<>();
-        return build(Notes.all(c), blocked, who -> Calls.inContacts(c, who));
+        List<Notes.Note> all = new ArrayList<>();
+        for (Missed.Call m : Missed.waiting(c, !Care.on(c))) {      // missed calls (Herbarium is the phone app, so they're not in Android's list)
+            Notes.Note n = new Notes.Note();
+            n.key = Notes.MISSED + m.number; n.pkg = c.getPackageName(); n.app = "Phone"; n.title = m.name;
+            n.text = m.times > 1 ? "called " + m.times + " times" : ""; n.person = ""; n.when = m.at;
+            n.call = true; n.important = true; n.category = android.app.Notification.CATEGORY_MISSED_CALL;
+            all.add(n);
+        }
+        all.addAll(Notes.all(c));
+        return build(all, blocked, who -> Calls.inContacts(c, who));
     }
 
     /** The summary itself, with no Android in it (so tests can run it). */

@@ -44,6 +44,7 @@ public class ThreadActivity extends Activity {
     private Theme t;
     private long thread = -1;
     private List<String> addresses = new ArrayList<>();
+    private LinearLayout head;
     private LinearLayout col, msgs;
     private ScrollView sc;
     private EditText box;
@@ -78,8 +79,13 @@ public class ThreadActivity extends Activity {
         LinearLayout root = Ui.column(this);
         android.graphics.Bitmap paper = Paper.ready(this, getResources().getDisplayMetrics().widthPixels, getResources().getDisplayMetrics().heightPixels, t);
         root.setBackground(paper != null ? new android.graphics.drawable.BitmapDrawable(getResources(), paper) : Paper.quick(t));
+        // who, Back and Call stay at the top while the messages scroll under them
+        head = Ui.row(this); head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        head.setPadding(t.dp(14), t.dp(40), t.dp(14), t.dp(8));
+        head.setBackgroundColor((t.paper2 & 0x00ffffff) | 0xee000000);
+        root.addView(head, Ui.wide());
         sc = new Steady.Scroll(this, t);
-        col = Ui.column(this); col.setPadding(t.dp(18), t.dp(48), t.dp(18), t.dp(16));
+        col = Ui.column(this); col.setPadding(t.dp(18), t.dp(8), t.dp(18), t.dp(16));
         sc.addView(col, Ui.wide());
         root.addView(sc, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         // the reply box, always at the bottom
@@ -273,14 +279,19 @@ public class ThreadActivity extends Activity {
         col.removeAllViews();
         boolean care = Care.on(this) && !getIntent().getBooleanExtra("helper", false), group = addresses.size() > 1;
         String name = addresses.isEmpty() ? "" : Texts.names(this, addresses);
-        TextView who = Ui.wholeWords(Ui.centered(Ui.text(this, t, name, 28, t.ink, Theme.semi)), 16); who.setMaxLines(3);
-        col.addView(who, Ui.wide());
-        TextView back = Ui.button(this, t, "Back", v -> finish());
+        head.removeAllViews();
+        TextView back = Ui.button(this, t, "‹ Back", v -> finish());
+        back.setContentDescription("Back to messages");
+        head.addView(back, Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        TextView who = Ui.wholeWords(Ui.centered(Ui.text(this, t, name, 22, t.ink, Theme.semi)), 14); who.setMaxLines(2);
+        LinearLayout.LayoutParams wp = Ui.weight(); wp.leftMargin = wp.rightMargin = t.dp(8);
+        head.addView(who, wp);
         boolean canCall = !group && !addresses.isEmpty() && !Sorter.business(addresses.get(0));
         if (canCall) {
-            TextView call = Ui.primary(this, t, "Call " + Missed.first(name), v -> Missed.callBack(this, addresses.get(0)));
-            col.addView(Ui.pair(this, t, call, back), Ui.wide(t.sdp(12)));
-        } else col.addView(back, Ui.wide(t.sdp(12)));
+            TextView call = Ui.primary(this, t, "Call", v -> Missed.callBack(this, addresses.get(0)));
+            call.setContentDescription("Call " + name);
+            head.addView(call, Ui.lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        } else head.addView(new View(this), Ui.lp(back.getMinWidth(), 1));
 
         if (list.size() >= limit) col.addView(Ui.button(this, t, "Show earlier messages", v -> { limit += 200; load(false); }), Ui.wide(t.sdp(14)));
         long lastDay = -1;
