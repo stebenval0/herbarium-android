@@ -134,15 +134,14 @@ final class Calls {
         if (!screening(c)) return true;
         if (!canTell(c)) return true;          // contacts can't be read (just restarted, not yet unlocked, no permission): never turn people away
         return decide(true, afterEmergencyCall(c), inContacts(c, number) || onList(c, number),
-                repeatRule(c), number, !norm(number).isEmpty() && recentlyDeclined(c, number));
+                repeatRule(c), number, recentlyDeclined(c, number));   // (a hidden number matches any hidden call turned away in the last 3 minutes)
     }
 
     /** The rule itself, with nothing looked up (tested in tests/). In order: screening off rings everyone; within an hour
-     *  of an emergency call everyone rings; known people ring; a hidden number never gets the second-try rule;
-     *  anyone else rings only on a second try within 3 minutes, if that rule is on. */
+     *  of an emergency call everyone rings; known people ring; anyone else, hidden numbers too (clinics and pharmacies
+     *  often call that way), rings only on a second try within 3 minutes, if that rule is on. */
     static boolean decide(boolean screening, boolean afterEmergency, boolean known, boolean repeatRule, String number, boolean triedRecently) {
         if (!screening || afterEmergency || known) return true;
-        if (norm(number).isEmpty()) return false;
         return repeatRule && triedRecently;
     }
 }

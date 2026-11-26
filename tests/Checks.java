@@ -21,7 +21,8 @@ public class Checks {
         check("a stranger is turned away", !Calls.decide(true, false, false, true, "2255550100", false));
         check("a stranger's second try within 3 min rings", Calls.decide(true, false, false, true, "2255550100", true));
         check("...but not with the second-try rule off", !Calls.decide(true, false, false, false, "2255550100", true));
-        check("a hidden number never gets the second try", !Calls.decide(true, false, false, true, "", true));
+        check("a hidden number rings on a second try", Calls.decide(true, false, false, true, "", true));
+        check("a hidden number's first try doesn't ring", !Calls.decide(true, false, false, true, "", false));
         check("after an emergency call, a stranger rings", Calls.decide(true, true, false, false, "5550000", false));
         check("after an emergency call, a hidden number rings", Calls.decide(true, true, false, false, "", false));
 
