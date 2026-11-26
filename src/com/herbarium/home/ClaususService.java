@@ -38,7 +38,7 @@ public class ClaususService extends Service {
     private Thread loop;
 
     static void start(Context c) {
-        c.startForegroundService(new Intent(c, ClaususService.class));
+        try { c.startForegroundService(new Intent(c, ClaususService.class)); } catch (Exception ignored) {}   // Android may refuse a start from the background; Guard and Home try again later
     }
 
     @Override public IBinder onBind(Intent i) { return null; }

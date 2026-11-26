@@ -62,6 +62,16 @@ final class Calls {
         return false;
     }
 
+    /** Whether the contacts can be read right now. */
+    static boolean canTell(Context c) {
+        if (c.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED) return false;
+        android.os.UserManager um = c.getSystemService(android.os.UserManager.class);
+        if (um != null && !um.isUserUnlocked()) return false;
+        try (Cursor cur = c.getContentResolver().query(ContactsContract.Contacts.CONTENT_URI, new String[]{ContactsContract.Contacts._ID}, null, null, null)) {
+            return cur != null;
+        } catch (Exception e) { return false; }
+    }
+
     static boolean inContacts(Context c, String number) {
         if (c.checkSelfPermission(Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED || number == null || number.isEmpty()) return false;
         Uri u = Uri.withAppendedPath(ContactsContract.PhoneLookup.CONTENT_FILTER_URI, Uri.encode(number));
@@ -76,6 +86,16 @@ final class Calls {
         for (int i = 0; i < d.length(); i++) {
             JSONObject o = d.optJSONObject(i);
             if (norm(o.optString("number")).equals(n) && now - o.optLong("at") < REPEAT_MS) return true;
+        }
+        return false;
+    }
+
+    /** Was this number turned away by Herbarium around this time (so its call-log entry isn't a missed call)? */
+    static boolean declinedAround(Context c, String number, long at) {
+        String n = norm(number); JSONArray d = list(c, "declined");
+        for (int i = 0; i < d.length(); i++) {
+            JSONObject o = d.optJSONObject(i);
+            if (norm(o.optString("number")).equals(n) && Math.abs(at - o.optLong("at")) < 120_000) return true;
         }
         return false;
     }
@@ -107,6 +127,7 @@ final class Calls {
     /** The decision for one incoming call. */
     static boolean mayRing(Context c, String number) {
         if (!screening(c)) return true;
+        if (!canTell(c)) return true;          // contacts can't be read (just restarted, not yet unlocked, no permission): never turn people away
         return decide(true, afterEmergencyCall(c), inContacts(c, number) || onList(c, number),
                 repeatRule(c), number, !norm(number).isEmpty() && recentlyDeclined(c, number));
     }

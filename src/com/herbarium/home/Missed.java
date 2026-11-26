@@ -37,7 +37,11 @@ final class Missed {
     static boolean canCall(Context c) { return c.checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED; }
 
     /** Who's waiting for a call back, newest first, one entry per person. */
-    static List<Call> waiting(Context c) {
+    static List<Call> waiting(Context c) { return waiting(c, false); }
+
+    /** `anyone`: also callers who rang for another reason (a second try, screening off, after an emergency call),
+     *  but never strangers Herbarium turned away. */
+    static List<Call> waiting(Context c, boolean anyone) {
         List<Call> out = new ArrayList<>();
         if (!canRead(c)) return out;
         long since = System.currentTimeMillis() - WINDOW;
@@ -51,7 +55,7 @@ final class Missed {
                 String number = cur.getString(0); int type = cur.getInt(1); long at = cur.getLong(2); long secs = cur.getLong(3);
                 String n = Calls.norm(number);
                 if (n.isEmpty()) continue;
-                if (type == CallLog.Calls.OUTGOING_TYPE || (type == CallLog.Calls.INCOMING_TYPE && secs > 0)) {
+                if ((type == CallLog.Calls.OUTGOING_TYPE || type == CallLog.Calls.INCOMING_TYPE) && secs > 0) {   // an unanswered call back still leaves them waiting
                     if (!reached.containsKey(n)) reached.put(n, at);
                     continue;
                 }
@@ -60,7 +64,7 @@ final class Missed {
                 if (done.optLong(n) >= at) continue;                             // put aside
                 Call m = byNumber.get(n);
                 if (m == null) {
-                    if (!(Calls.inContacts(c, number) || Calls.onList(c, number))) continue;
+                    if (!(Calls.inContacts(c, number) || Calls.onList(c, number) || (anyone && !Calls.declinedAround(c, number, at)))) continue;
                     m = new Call(); m.number = number; m.at = at; m.name = name(c, number, cur.getString(4));
                     byNumber.put(n, m);
                 }
@@ -111,8 +115,13 @@ final class Missed {
     /** Ring them back straight away (or open the dial pad with their number, if Herbarium may not place calls). */
     static void callBack(Context c, String number) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
-        if (nm != null) nm.cancel(ID);                 // calling back: the notice steps aside (it returns if the call doesn't connect)
+        if (nm != null) { nm.cancel(ID); nm.cancel(QUIET_ID); }   // calling back: the notice steps aside (it returns if the call doesn't connect)
         Uri tel = Uri.fromParts("tel", number, null);
+        // straight to Telecom when allowed: works over the lock screen too (an ACTION_CALL activity can't show there)
+        if (canCall(c)) {
+            try { android.telecom.TelecomManager tm = c.getSystemService(android.telecom.TelecomManager.class); if (tm != null) { tm.placeCall(tel, new android.os.Bundle()); return; } }
+            catch (Exception ignored) {}
+        }
         Intent i = new Intent(canCall(c) ? Intent.ACTION_CALL : Intent.ACTION_DIAL, tel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         try { c.startActivity(i); } catch (Exception e) { c.startActivity(new Intent(Intent.ACTION_DIAL, tel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
     }
@@ -121,7 +130,7 @@ final class Missed {
 
     // ------------------------------------------------------------------ the notice in Android's own list
     private static final String CHANNEL = "callbacks";
-    private static final int ID = 7101;
+    private static final int ID = 7101, QUIET_ID = 7102;   // Caretaken's "Call X back"; normal mode's "X called"
 
     /** One big notice for whoever's waiting ("Call Sam back"), tapping it calls; gone once nobody is. */
     static void notifyWaiting(Context c) {
@@ -176,13 +185,13 @@ final class Missed {
     static void notifyQuiet(Context c) {
         NotificationManager nm = c.getSystemService(NotificationManager.class);
         if (nm == null) return;
-        List<Call> w = waiting(c);
-        if (w.isEmpty()) { nm.cancel(ID); return; }
+        List<Call> w = waiting(c, true);
+        if (w.isEmpty()) { nm.cancel(QUIET_ID); return; }
         if (nm.getNotificationChannel("missed-quiet") == null)
             nm.createNotificationChannel(new NotificationChannel("missed-quiet", "Missed calls", NotificationManager.IMPORTANCE_DEFAULT));
         Call m = w.get(0);
         PendingIntent tap = PendingIntent.getActivity(c, 1, new Intent(c, CallBack.class).putExtra("number", m.number), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
-        nm.notify(ID, new Notification.Builder(c, "missed-quiet").setSmallIcon(android.R.drawable.sym_call_missed)
+        nm.notify(QUIET_ID, new Notification.Builder(c, "missed-quiet").setSmallIcon(android.R.drawable.sym_call_missed)
                 .setContentTitle(w.size() == 1 ? m.name + " called" : Summary.capital(Summary.count(w.size(), "missed call")))
                 .setContentText("Tap to call " + first(m.name) + " back.").setCategory(Notification.CATEGORY_MISSED_CALL)
                 .setContentIntent(tap).setAutoCancel(true).setOnlyAlertOnce(true).build());

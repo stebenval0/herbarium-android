@@ -26,10 +26,10 @@ public class Guard extends AccessibilityService {
             // the phone locks a moment after the screen goes off; show Herbarium's face so it's ready when it comes back on
             if (Intent.ACTION_SCREEN_ON.equals(i.getAction()) || android.media.AudioManager.RINGER_MODE_CHANGED_ACTION.equals(i.getAction())) {
                 Care.keepRinging(Guard.this);                // Caretaken: calls must be heard
-                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) Missed.notifyWaiting(Guard.this);
+                if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) new Thread(() -> Missed.notifyWaiting(Guard.this)).start();
                 if (!Intent.ACTION_SCREEN_ON.equals(i.getAction())) return;
             }
-            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction()) && recents != null) recents.hide();
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) { if (recents != null) recents.hide(); if (shade != null) shade.hide(); }   // nothing left over the call screen or the lock
             long wait = Intent.ACTION_SCREEN_OFF.equals(i.getAction()) ? 600 : 0;
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> LockActivity.show(Guard.this), wait);
         }
@@ -37,7 +37,7 @@ public class Guard extends AccessibilityService {
 
     private final android.database.ContentObserver callLog = new android.database.ContentObserver(new android.os.Handler(android.os.Looper.getMainLooper())) {
         @Override public void onChange(boolean self) {
-            Missed.notifyWaiting(Guard.this);
+            new Thread(() -> Missed.notifyWaiting(Guard.this)).start();     // reads the call log: never on the main thread
             sendBroadcast(new Intent(Missed.CHANGED).setPackage(getPackageName()));
         }
     };
@@ -81,6 +81,8 @@ public class Guard extends AccessibilityService {
         return null;
     }
 
+    /** A call is coming in or going out: nothing of ours may cover its screen. */
+    static void clearForCall() { Guard g = instance; if (g == null) return; new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> { if (g.shade != null) g.shade.hide(); if (g.recents != null) g.recents.hide(); }); }
     static void openShade() { Guard g = instance; if (g != null && g.shade != null) g.shade.show(); }
 
     @Override protected void onServiceConnected() {
@@ -171,7 +173,7 @@ public class Guard extends AccessibilityService {
     static void allow(Context c, String kind) {
         Theme.prefs(c).edit().putLong("pass_" + kind, SystemClock.elapsedRealtime() + 5 * 60_000L).apply();
     }
-    private boolean open(String kind) { return SystemClock.elapsedRealtime() < Theme.prefs(this).getLong("pass_" + kind, 0); }
+    private boolean open(String kind) { long left = Theme.prefs(this).getLong("pass_" + kind, 0) - SystemClock.elapsedRealtime(); return left > 0 && left <= 5 * 60_000L; }   // a restart (uptime starts again) can't stretch a pass
 
     private boolean passes(String pkg, AccessibilityNodeInfo root) {
         if (has(root, "Uninstall") || has(root, "uninstall")) return false;
@@ -197,7 +199,7 @@ public class Guard extends AccessibilityService {
         int k = e.getKeyCode();
         if (k != android.view.KeyEvent.KEYCODE_VOLUME_UP && k != android.view.KeyEvent.KEYCODE_VOLUME_DOWN) return false;
         android.telecom.Call c = InCall.current();
-        if (c != null && c.getDetails().getState() == android.telecom.Call.STATE_RINGING) return false;   // the buttons still silence the ring
+        if (c != null && InCall.state(c) == android.telecom.Call.STATE_RINGING) return false;   // the buttons still silence the ring
         if (e.getAction() != android.view.KeyEvent.ACTION_DOWN) return true;
         android.media.AudioManager am = getSystemService(android.media.AudioManager.class);
         if (am == null) return false;

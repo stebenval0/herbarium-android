@@ -117,6 +117,8 @@ final class Shade {
         AudioManager am = s.getSystemService(AudioManager.class);
         NotificationManager nm = s.getSystemService(NotificationManager.class);
         boolean dnd = nm != null && nm.getCurrentInterruptionFilter() > NotificationManager.INTERRUPTION_FILTER_ALL;
+        if (InCall.current() != null) grid.addView(Ui.primary(s, t, "Back to the call", v -> { hide(); CallActivity.bringBack(s); }), Ui.wide(t.dp(10)));
+        final boolean helpersOnly = Care.settingsLocked(s);      // Android's settings pages are closed to the person: no buttons that lead there
         TextView torchB = ctl(t, torch ? "Torch · on" : "Torch", torch, v -> { toggleTorch(); rebuild(); });
         if (Care.on(s)) grid.addView(torchB, Ui.wide(t.dp(10)));          // Caretaken: calls always ring, so there's no Quiet
         else addPair(grid, t, torchB, ctl(t, dnd ? "Quiet · on" : "Quiet", dnd, v -> { toggleDnd(nm); rebuild(); }));
@@ -124,8 +126,8 @@ final class Shade {
             addPair(grid, t,
                     ctl(t, "Dimmer", false, v -> brightness(-40)),
                     ctl(t, "Brighter", false, v -> brightness(+40)));
-        else if (!locked)   // without permission to change brightness, Android's own brightness slider (it can't open over the lock)
-            grid.addView(ctl(t, "Brightness", false, v -> { hide(); s.startActivity(new Intent(Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }), Ui.wide(t.dp(10)));
+        else if (!locked && !helpersOnly)   // without permission to change brightness, Android's own brightness slider (it can't open over the lock)
+            grid.addView(ctl(t, "Brightness", false, v -> { hide(); go(new Intent(Settings.ACTION_DISPLAY_SETTINGS)); }), Ui.wide(t.dp(10)));
         // the volume that matters now: the ringer when nothing plays, the call during a call, music while it plays.
         // The level shows on the button itself (Android's own volume slider never pops up)
         String level = volumeLevel(am);
@@ -133,8 +135,9 @@ final class Shade {
         Steady.tap(softer, t, v -> { VolumeCard.step(am, false); louder.setText("Louder" + volumeLevel(am)); });
         Steady.tap(louder, t, v -> { VolumeCard.step(am, true); louder.setText("Louder" + volumeLevel(am)); });
         addPair(grid, t, softer, louder);
-        if (!locked) addPair(grid, t,
-                ctl(t, "Wi-Fi", false, v -> { hide(); s.startActivity(new Intent(Settings.Panel.ACTION_WIFI).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }),
+        if (!locked && helpersOnly) grid.addView(ctl(t, "Home", false, v -> { hide(); s.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); }), Ui.wide(t.dp(10)));
+        else if (!locked) addPair(grid, t,
+                ctl(t, "Wi-Fi", false, v -> { hide(); go(new Intent(Settings.Panel.ACTION_WIFI)); }),
                 ctl(t, "Home", false, v -> { hide(); s.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME); }));
         col.addView(grid, Ui.wide(t.sdp(16)));
 
@@ -169,6 +172,12 @@ final class Shade {
         if (am == null) return "";
         int stream = VolumeCard.stream(am);
         return " · " + am.getStreamVolume(stream) + " of " + am.getStreamMaxVolume(stream);
+    }
+
+    /** Open one of Android's pages; a phone without it just stays put. */
+    private void go(Intent i) {
+        try { s.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); }
+        catch (Exception e) { try { s.startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception ignored) {} }
     }
 
     void hide() { if (panel != null) { try { wm.removeView(panel); } catch (Exception ignored) {} panel = null; } }
@@ -208,7 +217,7 @@ final class Shade {
     }
     private void toggleDnd(NotificationManager nm) {
         if (nm == null) return;
-        if (!nm.isNotificationPolicyAccessGranted()) { hide(); s.startActivity(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); return; }
+        if (!nm.isNotificationPolicyAccessGranted()) { hide(); go(new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)); return; }
         boolean on = nm.getCurrentInterruptionFilter() > NotificationManager.INTERRUPTION_FILTER_ALL;
         nm.setInterruptionFilter(on ? NotificationManager.INTERRUPTION_FILTER_ALL : NotificationManager.INTERRUPTION_FILTER_PRIORITY);
     }

@@ -110,6 +110,12 @@ public class HomeActivity extends Activity {
 
     @Override protected void onDestroy() { unregisterReceiver(power); unregisterReceiver(packages); unregisterReceiver(clausus); unregisterReceiver(notes); unregisterReceiver(missed); unregisterReceiver(texts); if (tts != null) tts.shutdown(); bg.shutdown(); super.onDestroy(); }
 
+    private TextView callBar;
+    private final Runnable callCheck = new Runnable() { @Override public void run() {
+        if (callBar != null) callBar.setVisibility(InCall.current() != null ? View.VISIBLE : View.GONE);
+        ui.postDelayed(this, 1500);
+    } };
+
     private long stoppedAt;
     @Override protected void onStop() { stoppedAt = android.os.SystemClock.elapsedRealtime(); super.onStop(); }
     @Override protected void onResume() {
@@ -119,6 +125,7 @@ public class HomeActivity extends Activity {
             deck.go(HOME, false); if (homeScroll != null) homeScroll.scrollTo(0, 0);
         }
         stoppedAt = 0;
+        ui.removeCallbacks(callCheck); ui.post(callCheck);
         if (SetupActivity.needed(this)) startActivity(new Intent(this, SetupActivity.class));   // [onboarding] an unfinished setup comes back to the front
         if (!themeKey.equals(key(Theme.get(this)))) build();
         hideBars();
@@ -127,11 +134,11 @@ public class HomeActivity extends Activity {
         ui.removeCallbacks(tick); ui.post(tick);
         if (Weather.stale(this)) bg.execute(() -> { if (Weather.refresh(this)) ui.post(() -> { updateWeather(); if (!themeKey.equals(key(Theme.get(this)))) build(); }); });
     }
-    @Override protected void onPause() { ui.removeCallbacks(tick); try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} super.onPause(); }
+    @Override protected void onPause() { ui.removeCallbacks(callCheck); ui.removeCallbacks(tick); try { getContentResolver().unregisterContentObserver(callLog); } catch (Exception ignored) {} super.onPause(); }
 
     /** Caretaken mode: a missed call or a call back changes Home at once. */
     private final android.database.ContentObserver callLog = new android.database.ContentObserver(new android.os.Handler(android.os.Looper.getMainLooper())) {
-        @Override public void onChange(boolean self) { renderCare(); if (callsPage != null) HomePages.fillCalls(HomeActivity.this, t, callsPage, bg, ui); Missed.notifyWaiting(HomeActivity.this); }
+        @Override public void onChange(boolean self) { renderCare(); if (callsPage != null) HomePages.fillCalls(HomeActivity.this, t, callsPage, bg, ui); bg.execute(() -> Missed.notifyWaiting(HomeActivity.this)); }
     };
 
     /** Pressing Home while already home: close whatever is open and go back to the top. */
@@ -206,6 +213,13 @@ public class HomeActivity extends Activity {
 
         root.addView(buildStrip(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, t.dp(40), Gravity.TOP));
         root.addView(buildTabs(), new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+
+        // during a call, a way back to it (pressing Home leaves the call screen behind)
+        callBar = Ui.primary(this, t, "Back to the call", v -> CallActivity.bringBack(this));
+        FrameLayout.LayoutParams cbp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP);
+        cbp.topMargin = t.dp(44); cbp.leftMargin = cbp.rightMargin = t.dp(18);
+        callBar.setElevation(t.dp(14)); callBar.setVisibility(View.GONE);
+        root.addView(callBar, cbp);
 
         sheet = new FrameLayout(this); sheet.setVisibility(View.GONE); sheet.setBackgroundColor(t.paperHi); sheet.setElevation(t.dp(12));
         root.addView(sheet, Ui.fill());
@@ -563,7 +577,13 @@ public class HomeActivity extends Activity {
     }
 
     private void renderCare() {
-        if (careBox != null) CarePages.fill(this, t, careBox, this::renderCare, () -> deck.go(CALLS, true));
+        if (careBox != null) {
+            final LinearLayout box = careBox;
+            bg.execute(() -> {          // the call log and contacts are read off the main thread (a cold provider can take seconds)
+                List<Missed.Call> w = Missed.waiting(this); List<CarePages.Person> f = CarePages.starred(this);
+                ui.post(() -> { if (careBox == box && !isDestroyed()) CarePages.fill(this, t, box, this::renderCare, () -> deck.go(CALLS, true), w, f); });
+            });
+        }
         if (peoplePage != null) CarePages.fillPeople(this, t, peoplePage);
     }
 

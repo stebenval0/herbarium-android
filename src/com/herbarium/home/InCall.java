@@ -18,6 +18,10 @@ import java.util.List;
  * Android itself keeps ringing and the call sound; this is only what the person sees and touches.
  */
 public class InCall extends InCallService {
+    /** A call's state on every Android this runs on (Details.getState is Android 12 and later). */
+    @SuppressWarnings("deprecation")
+    static int state(Call c) { return android.os.Build.VERSION.SDK_INT >= 31 ? c.getDetails().getState() : c.getState(); }
+
     static volatile InCall me;
     static final List<Call> calls = new ArrayList<>();
     private final java.util.Set<Call> speakered = new java.util.HashSet<>();
@@ -44,6 +48,7 @@ public class InCall extends InCallService {
         me = this; addedAt = android.os.SystemClock.elapsedRealtime();
         synchronized (calls) { calls.add(c); }
         c.registerCallback(cb);
+        Guard.clearForCall();
         show();
         changed();
     }
@@ -75,7 +80,7 @@ public class InCall extends InCallService {
         synchronized (calls) {
             Call best = null;
             for (Call c : calls) {
-                int s = c.getDetails().getState();
+                int s = InCall.state(c);
                 if (s == Call.STATE_RINGING) return c;
                 if (s == Call.STATE_DISCONNECTED) continue;
                 if (best == null || s == Call.STATE_ACTIVE) best = c;
@@ -109,10 +114,11 @@ public class InCall extends InCallService {
             NotificationChannel ch = new NotificationChannel(CHANNEL, "Calls", NotificationManager.IMPORTANCE_LOW);
             nm.createNotificationChannel(ch);
         }
-        boolean ringing = c.getDetails().getState() == Call.STATE_RINGING;
+        boolean ringing = InCall.state(c) == Call.STATE_RINGING;
         // the pop-up is only a fallback: give the call screen 1.5 s to open by itself first
-        boolean popUp = ringing && !screenShown && !screenAlive && android.os.SystemClock.elapsedRealtime() - addedAt > 1500;
-        if (ringing && !screenShown && !screenAlive && !popUp) {
+        // (a call screen left paused behind another app gets longer to come forward, then the pop-up shows anyway)
+        boolean popUp = ringing && !screenShown && android.os.SystemClock.elapsedRealtime() - addedAt > (screenAlive ? 4000 : 1500);
+        if (ringing && !screenShown && !popUp) {
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::refresh, 1600);
             return;
         }

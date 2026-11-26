@@ -100,7 +100,7 @@ public class CallActivity extends Activity {
             finish(); overridePendingTransition(0, 0);
             return;
         }
-        int st = call.getDetails().getState();
+        int st = InCall.state(call);
         boolean spk = InCall.speaker(), mute = InCall.muted();
         // the screen only needs rebuilding when something changes (the timer updates in place)
         if (st == lastState && spk == lastSpeaker && mute == lastMuted && keypad == lastKeypad) { updateTimer(call); return; }
@@ -188,7 +188,7 @@ public class CallActivity extends Activity {
 
     private void updateTimer(Call call) {
         View v = col.findViewWithTag("status");
-        if (v instanceof TextView && call.getDetails().getState() == Call.STATE_ACTIVE) ((TextView) v).setText(elapsed(call));
+        if (v instanceof TextView && InCall.state(call) == Call.STATE_ACTIVE) ((TextView) v).setText(elapsed(call));
     }
 
     /** Big number keys for "press 1 for…", with what's been pressed above them. */

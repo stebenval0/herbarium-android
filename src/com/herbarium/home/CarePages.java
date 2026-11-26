@@ -33,9 +33,11 @@ final class CarePages {
     static final class Person { String name, number; }
 
     /** Fill `box` (on Home, under the clock) with the calls to return, favourites and the three apps. */
-    static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone) {
+    static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone) { fill(a, t, box, refresh, everyone, Missed.waiting(a), starred(a)); }
+
+    /** The same, with the call log and contacts already read (off the main thread). */
+    static void fill(Activity a, Theme t, LinearLayout box, Runnable refresh, Runnable everyone, List<Missed.Call> waiting, List<Person> fav) {
         box.removeAllViews();
-        List<Missed.Call> waiting = Missed.waiting(a);
         if (!waiting.isEmpty()) {
             box.addView(Ui.heading(a, t, waiting.size() == 1 ? "Someone called you" : "People who called you"));
             for (Missed.Call m : waiting) box.addView(missedCard(a, t, m, refresh), Ui.wide(t.sdp(10)));
@@ -45,7 +47,6 @@ final class CarePages {
 
         // favourites look nothing like a missed call: round portraits under "Call someone", an action to choose,
         // never news (no times, no "called you")
-        List<Person> fav = starred(a);
         if (!fav.isEmpty()) {
             box.addView(Ui.heading(a, t, "Call someone"));
             int cols = t.huge() ? 1 : 2;

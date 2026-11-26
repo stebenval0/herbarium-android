@@ -91,7 +91,7 @@ final class Care {
     /** Bring everything in line with the switch: the ringer, and the call-back notice. */
     static void apply(Context c) {
         if (on(c)) keepRinging(c);
-        Missed.notifyWaiting(c);
+        new Thread(() -> Missed.notifyWaiting(c.getApplicationContext())).start();   // reads the call log
     }
 
     private static long lastCheck;

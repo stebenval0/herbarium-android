@@ -344,6 +344,8 @@ final class Texts {
 
     // ------------------------------------------------------------------ sending
     static SmsManager sms(Context c, int subId) {
+        if (android.os.Build.VERSION.SDK_INT < 31)      // (Android 11 has no SmsManager system service)
+            return subId >= 0 ? SmsManager.getSmsManagerForSubscriptionId(subId) : SmsManager.getDefault();
         SmsManager m = c.getSystemService(SmsManager.class);
         return subId >= 0 && m != null ? m.createForSubscriptionId(subId) : m;
     }
@@ -432,10 +434,18 @@ final class Texts {
      * A text arrived. People: a notice that sounds. Codes: a notice showing the code. Updates and unknown numbers: quiet.
      * Offers: nothing. Caretaken mode: only people, links taken out; everything else is kept silently for helpers.
      */
+    /** Has the person ever written in this conversation? (Then whoever replies counts as a person, as in the list.) */
+    static boolean wrote(Context c, long thread) {
+        try (android.database.Cursor cur = c.getContentResolver().query(android.provider.Telephony.Sms.CONTENT_URI, new String[]{"_id"},
+                "thread_id = ? AND type = 2", new String[]{String.valueOf(thread)}, "_id LIMIT 1")) {
+            return cur != null && cur.moveToFirst();
+        } catch (Exception e) { return false; }
+    }
+
     static void notifyIncoming(Context c, long thread, String address, String text) {
         if (thread < 0 || thread == openThread) return;
         boolean known = Calls.inContacts(c, address) || Calls.onList(c, address);
-        int pile = Sorter.sort(known, false, address, text);
+        int pile = Sorter.sort(known, wrote(c, thread), address, text);
         boolean care = Care.on(c);
         if (care && pile != Sorter.PEOPLE) return;
         if (pile == Sorter.OFFERS) return;
